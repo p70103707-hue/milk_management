@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="fw-bold mb-1" data-i18n="nav_customers">👥 Customers</h1>
+            <p class="text-secondary mb-0">Register and configure client profiles, subscriptions, and custom rates.</p>
+        </div>
+        <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+            <i class="fas fa-user-plus me-2"></i>Register New Customer
+        </button>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="col-12 mb-3">
+        <div class="glass-panel p-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5 col-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-input); color: var(--text-secondary);">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="searchCustomerInput" class="form-control form-control-custom border-start-0" 
+                               placeholder="Search customer by name, mobile, address..." onkeyup="filterCustomersTable()">
+                    </div>
+                </div>
+                <div class="col-md-4 col-12">
+                    <select id="filterSocietySelect" class="form-select form-control-custom" onchange="filterCustomersTable()">
+                        <option value="">All Societies</option>
+                        {% for s in societies %}
+                            <option value="{{ s.name }}" {% if selected_society_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 col-12 text-md-end text-start">
+                    <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold">
+                        Total: <span id="customerCount">{{ customers|length }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="col-12">
+        <div class="glass-panel p-4">
+            <div class="table-responsive">
+                <table class="table table-custom align-middle" id="adminCustomersTable">
+                    <thead>
+                        <tr>
+                            <th data-i18n="customer_name">Customer Name</th>
+                            <th data-i18n="mobile_number">Mobile Number</th>
+                            <th data-i18n="address">Address</th>
+                            <th data-i18n="nav_societies">Society</th>
+                            <th data-i18n="default_qty">Default Qty</th>
+                            <th data-i18n="custom_rate">Custom Rate</th>
+                            <th>Allocated Milkman</th>
+                            <th data-i18n="status">Status</th>
+                            <th class="text-end" data-i18n="action">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if customers %}
+                            {% for c in customers %}
+                            <tr class="cust-row" data-society="{{ c.society.name if c.society else '' }}">
+                                <td class="fw-bold text-nowrap">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center bg-info-subtle text-info" style="width: 36px; height: 36px; font-size: 1rem;">
+                                            👤
+                                        </div>
+                                        <span class="cust-name">{{ c.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="cust-mobile">{{ c.mobile }}</td>
+                                <td class="cust-address text-truncate" style="max-width: 180px;">{{ c.address }}</td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
+                                        {{ c.society.name if c.society else 'N/A' }}
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-primary">{{ c.default_quantity }} L</td>
+                                <td>
+                                    {% if c.custom_rate %}
+                                        <span class="text-success fw-bold">₹{{ c.custom_rate }}/L</span>
+                                    {% else %}
+                                        <span class="text-muted small">Global Rate</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if c.allocated_milkman %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-semibold">
+                                            <i class="fas fa-biking me-1"></i>{{ c.allocated_milkman.name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
+                                            <i class="fas fa-times me-1"></i>Unallocated
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if c.status == 'Active' %}
+                                        <span class="badge-custom badge-delivered">Active</span>
+                                    {% elif c.status == 'Vacation' %}
+                                        <span class="badge-custom badge-pending">Vacation</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped">{{ c.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-2 px-3 fw-medium"
+                                            onclick="openEditCustomerModal({{ c.id }}, '{{ c.name|escape }}', '{{ c.mobile|escape }}', '{{ c.address|escape }}', {{ c.society_id }}, {{ c.default_quantity }}, '{{ c.custom_rate or '' }}', '{{ c.status }}', '{{ c.milkman_id or '' }}')">
+                                        <i class="fas fa-user-edit me-1"></i><span data-i18n="btn_edit">Edit</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger px-3 fw-medium"
+                                            onclick="openDeleteCustomerModal({{ c.id }}, '{{ c.name|escape }}')">
+                                        <i class="fas fa-trash-alt me-1"></i><span data-i18n="btn_delete">Delete</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="noCustomersRow">
+                                <td colspan="9" class="text-center text-secondary py-5">No customers registered yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     EDIT CUSTOMER MODAL (Outside table)
+     ============================================================ -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title fw-bold text-primary" id="editCustomerModalLabel">
+                    <i class="fas fa-user-edit me-2"></i>Edit Customer Profile
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editCustomerForm" method="POST" action="">
+                <div class="modal-body text-start pt-2">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="customer_name">Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" id="editCustomerName" name="name" class="form-control form-control-custom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="mobile_number">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" id="editCustomerMobile" name="mobile" class="form-control form-control-custom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="address">Address <span class="text-danger">*</span></label>
+                        <input type="text" id="editCustomerAddress" name="address" class="form-control form-control-custom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="select_society">Select Society <span class="text-danger">*</span></label>
+                        <select id="editCustomerSociety" name="society_id" class="form-select form-control-custom" required>
+                            {% for s in societies %}
+                                <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small" data-i18n="default_qty">Default Qty (L) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" id="editCustomerDefaultQty" name="default_qty" class="form-control form-control-custom" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small" data-i18n="custom_rate">Custom Rate (₹/L)</label>
+                            <input type="number" step="0.1" id="editCustomerCustomRate" name="custom_rate" class="form-control form-control-custom" placeholder="Global rate">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="status">Account Status <span class="text-danger">*</span></label>
+                        <select id="editCustomerStatus" name="status" class="form-select form-control-custom" required>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Vacation">Vacation</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Allocated Milkman</label>
+                        <select id="editCustomerMilkman" name="milkman_id" class="form-select form-control-custom">
+                            <option value="">-- No Milkman (Unallocated) --</option>
+                            {% for m in milkmen %}
+                                <option value="{{ m.id }}">{{ m.name }} ({{ m.mobile }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text small text-muted">Customer will see this milkman's details in their dashboard.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Reset Password</label>
+                        <input type="password" id="editCustomerPassword" name="password" class="form-control form-control-custom" placeholder="Leave blank to keep current">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                        <i class="fas fa-save me-1"></i><span data-i18n="btn_save">Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     DELETE CUSTOMER MODAL (Outside table)
+     ============================================================ -->
+<div class="modal fade" id="deleteCustomerModal" tabindex="-1" aria-labelledby="deleteCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title fw-bold text-danger" id="deleteCustomerModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete Customer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start py-3">
+                <p class="mb-2">Are you sure you want to delete customer <strong class="text-danger" id="deleteCustomerName"></strong>?</p>
+                <div class="alert alert-warning small border-0 mb-0" style="background: rgba(245, 158, 11, 0.12); color: var(--warning); border-radius: 12px;">
+                    <i class="fas fa-info-circle me-1"></i> This will safely remove this customer profile.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-2">
+                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteCustomerForm" method="POST" action="" style="display:inline;">
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold">
+                        <i class="fas fa-trash-alt me-1"></i><span data-i18n="btn_delete">Delete Customer</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ADD CUSTOMER MODAL
+     ============================================================ -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="addCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title fw-bold text-primary" id="addCustomerModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Register New Customer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin.customers') }}" method="POST">
+                <div class="modal-body text-start pt-2">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="customer_name">Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control form-control-custom" placeholder="e.g. Aarav Patel" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="mobile_number">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" name="mobile" class="form-control form-control-custom" placeholder="e.g. 9876543210" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="address">Address <span class="text-danger">*</span></label>
+                        <input type="text" name="address" class="form-control form-control-custom" placeholder="Block / Plot Number, Area" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="select_society">Select Society <span class="text-danger">*</span></label>
+                        <select name="society_id" class="form-select form-control-custom" required>
+                            <option value="">-- Choose Society --</option>
+                            {% for s in societies %}
+                                <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small" data-i18n="default_qty">Default Qty (L) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" name="default_qty" class="form-control form-control-custom" value="1.0" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small" data-i18n="custom_rate">Custom Rate (₹/L)</label>
+                            <input type="number" step="0.1" name="custom_rate" class="form-control form-control-custom" placeholder="Global rate">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Assign Milkman</label>
+                        <select name="milkman_id" class="form-select form-control-custom">
+                            <option value="">-- Assign Later (Unallocated) --</option>
+                            {% for m in milkmen %}
+                                <option value="{{ m.id }}">{{ m.name }} ({{ m.mobile }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text small text-muted">Allocated milkman will immediately appear on customer's dashboard.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Password <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control form-control-custom" value="customer123" placeholder="customer123 (Default)" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold" data-i18n="btn_add">
+                        <i class="fas fa-check me-1"></i>Add New Customer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditCustomerModal(id, name, mobile, address, societyId, defaultQty, customRate, status, milkmanId) {
+    document.getElementById('editCustomerForm').action = '/admin/customers/edit/' + id;
+    document.getElementById('editCustomerName').value = name;
+    document.getElementById('editCustomerMobile').value = mobile;
+    document.getElementById('editCustomerAddress').value = address;
+    document.getElementById('editCustomerSociety').value = societyId;
+    document.getElementById('editCustomerDefaultQty').value = defaultQty;
+    document.getElementById('editCustomerCustomRate').value = customRate || '';
+    document.getElementById('editCustomerStatus').value = status;
+    document.getElementById('editCustomerMilkman').value = milkmanId || '';
+    document.getElementById('editCustomerPassword').value = '';
+
+    const modalEl = document.getElementById('editCustomerModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function openDeleteCustomerModal(id, name) {
+    document.getElementById('deleteCustomerForm').action = '/admin/customers/delete/' + id;
+    document.getElementById('deleteCustomerName').innerText = name;
+
+    const modalEl = document.getElementById('deleteCustomerModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function filterCustomersTable() {
+    const searchVal = document.getElementById('searchCustomerInput').value.toLowerCase().trim();
+    const societyVal = document.getElementById('filterSocietySelect').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.cust-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const name = row.querySelector('.cust-name')?.innerText.toLowerCase() || '';
+        const mobile = row.querySelector('.cust-mobile')?.innerText.toLowerCase() || '';
+        const address = row.querySelector('.cust-address')?.innerText.toLowerCase() || '';
+        const society = row.getAttribute('data-society').toLowerCase();
+
+        const matchSearch = name.includes(searchVal) || mobile.includes(searchVal) || address.includes(searchVal);
+        const matchSociety = !societyVal || society === societyVal;
+
+        if (matchSearch && matchSociety) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    const countBadge = document.getElementById('customerCount');
+    if (countBadge) {
+        countBadge.innerText = visibleCount;
+    }
+}
+</script>
+{% endblock %}

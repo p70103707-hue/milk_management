@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header banner with Holiday Message Action -->
+    <div class="col-12 mb-4">
+        <div class="hero-banner p-4 p-md-5">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <span class="badge bg-white bg-opacity-25 text-white px-3 py-1 rounded-pill mb-2">
+                        <i class="fas fa-truck me-1"></i> Milkman Delivery Operations
+                    </span>
+                    <h1 class="fw-bold mb-2"><span data-i18n="hello">Hello</span>, {{ milkman.name }}!</h1>
+                    <p class="mb-3 fs-5 text-white-50">Manage daily customer deliveries, collect monthly payments, and send holiday notifications.</p>
+                    
+                    <!-- Prominent Holiday Message Button -->
+                    <button type="button" class="btn btn-light text-primary fw-bold px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#holidayMessageModal">
+                        <i class="fas fa-bullhorn text-danger me-2"></i> Send Holiday Message to Customers
+                    </button>
+                </div>
+                <div class="col-lg-4 text-center mt-4 mt-lg-0">
+                    <div class="glass-panel p-3 d-inline-block text-start text-dark bg-white shadow-lg" style="max-width: 280px;">
+                        <small class="text-secondary d-block fw-semibold mb-1"><i class="fas fa-sms text-primary me-1"></i> Daily SMS Quota (Limit: 50/day)</small>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">Sent Today:</span>
+                            <strong class="text-primary" id="cardSmsSent">{{ sms_stats.total_sent_today }} / 50</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small">Remaining:</span>
+                            <strong class="text-success" id="cardSmsRemaining">{{ sms_stats.remaining_today }} left</strong>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            {% set pct = (sms_stats.total_sent_today / 50.0) * 100 %}
+                            <div class="progress-bar {% if sms_stats.limit_reached %}bg-danger{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats summary grid -->
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-panel p-4 text-center h-100">
+            <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle d-inline-block mb-3">
+                <i class="fas fa-check-circle fa-2x"></i>
+            </div>
+            <h3 class="fw-bold mb-1">{{ delivered_count }}</h3>
+            <span class="text-secondary">Delivered Today</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-panel p-4 text-center h-100">
+            <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle d-inline-block mb-3">
+                <i class="fas fa-times-circle fa-2x"></i>
+            </div>
+            <h3 class="fw-bold mb-1">{{ skipped_count }}</h3>
+            <span class="text-secondary">Skipped Today</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-panel p-4 text-center h-100">
+            <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle d-inline-block mb-3">
+                <i class="fas fa-hourglass-half fa-2x"></i>
+            </div>
+            <h3 class="fw-bold mb-1">{{ pending_count }}</h3>
+            <span class="text-secondary">Pending Deliveries</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-panel p-4 text-center h-100">
+            <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle d-inline-block mb-3">
+                <i class="fas fa-wine-bottle fa-2x"></i>
+            </div>
+            <h3 class="fw-bold mb-1">{{ total_qty_delivered }} <span style="font-size: 1rem;">L</span></h3>
+            <span class="text-secondary">Milk Quantity Today</span>
+        </div>
+    </div>
+
+    <!-- Main Navigation Actions -->
+    <div class="col-md-4 mb-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-3">
+                        <i class="fas fa-truck fa-lg"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold text-primary">Daily Delivery Entry</h5>
+                </div>
+                <p class="text-secondary small mb-4">Browse assigned societies and update individual customer milk delivery quantities (in Liters & Milliliters).</p>
+            </div>
+            <a href="{{ url_for('milkman.delivery') }}" class="btn btn-primary py-2 px-3 rounded-3 d-flex justify-content-between align-items-center fw-bold shadow-sm">
+                <span><i class="fas fa-clipboard-check me-2"></i>Open Daily Delivery Log</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="p-2 bg-success bg-opacity-10 text-success rounded-3">
+                        <i class="fas fa-hand-holding-usd fa-lg"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold text-success">Payment Collection</h5>
+                </div>
+                <p class="text-secondary small mb-4">Collect pending monthly bills from customers via Cash on Delivery (COD), UPI QR, PhonePe, or Google Pay.</p>
+            </div>
+            <a href="{{ url_for('milkman.collect_payment') }}" class="btn py-2 px-3 rounded-3 d-flex justify-content-between align-items-center fw-bold text-white shadow-sm"
+               style="background: linear-gradient(135deg, #10b981, #059669); border: none;">
+                <span><i class="fas fa-rupee-sign me-2"></i>Collect Customer Payments</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-3">
+                        <i class="fas fa-bullhorn fa-lg"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold text-danger">Holiday SMS & History</h5>
+                </div>
+                <p class="text-secondary small mb-4">Broadcast holiday announcements to customers with automatic 50 SMS/day limit protection.</p>
+            </div>
+            <button type="button" class="btn btn-outline-danger py-2 px-3 rounded-3 d-flex justify-content-between align-items-center fw-bold" data-bs-toggle="modal" data-bs-target="#holidayMessageModal">
+                <span><i class="fas fa-paper-plane me-2"></i>Holiday Message</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Recent Holiday Messages List -->
+    {% if recent_holidays %}
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-primary mb-0"><i class="fas fa-history me-2"></i>Recent Holiday Announcements</h5>
+                <a href="{{ url_for('milkman.holiday_history') }}" class="btn btn-sm btn-outline-primary">View Full History</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr class="text-secondary">
+                            <th>Holiday Date</th>
+                            <th>Message</th>
+                            <th>Sent Count</th>
+                            <th>Status</th>
+                            <th>Date Dispatched</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in recent_holidays %}
+                        <tr>
+                            <td class="fw-bold text-danger">{{ h.holiday_date.strftime('%d-%b-%Y') }}</td>
+                            <td class="small" style="max-width: 320px;">{{ h.message }}</td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ h.total_sent }} Customers</span></td>
+                            <td><span class="badge-custom badge-delivered">{{ h.status }}</span></td>
+                            <td class="text-secondary small">{{ h.created_at.strftime('%d-%b-%Y %I:%M %p') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============================================================ -->
+<!-- HOLIDAY MESSAGE MODAL WITH 50 SMS/DAY LIMIT CONTROLS          -->
+<!-- ============================================================ -->
+<div class="modal fade" id="holidayMessageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content glass-panel border-0">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold text-danger mb-1">
+                        <i class="fas fa-bullhorn me-2"></i>Broadcast Holiday Message to Customers
+                    </h5>
+                    <p class="text-secondary small mb-0">Send an SMS notification to customers informing them of an upcoming milk delivery holiday.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body pt-3">
+                <!-- SMS Service Limits Card -->
+                <div class="p-3 rounded-4 mb-4" style="background: rgba(37, 99, 235, 0.05); border: 1.5px solid rgba(37, 99, 235, 0.2);">
+                    <div class="row align-items-center">
+                        <div class="col-sm-4 text-center border-end border-card mb-2 mb-sm-0">
+                            <small class="text-secondary d-block">Sender Mobile Number</small>
+                            <strong class="text-primary fs-6"><i class="fas fa-phone-alt me-1"></i>{{ sms_stats.sender_number }}</strong>
+                        </div>
+                        <div class="col-sm-4 text-center border-end border-card mb-2 mb-sm-0">
+                            <small class="text-secondary d-block">Total SMS Sent Today</small>
+                            <h5 class="fw-bold text-dark mb-0" id="modalSentCount">{{ sms_stats.total_sent_today }} / 50</h5>
+                        </div>
+                        <div class="col-sm-4 text-center">
+                            <small class="text-secondary d-block">Remaining SMS Today</small>
+                            <h5 class="fw-bold {% if sms_stats.remaining_today > 10 %}text-success{% else %}text-danger{% endif %} mb-0" id="modalRemainingCount">{{ sms_stats.remaining_today }} SMS</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Limit Reached Warning -->
+                <div id="limitReachedAlert" class="alert alert-danger {% if not sms_stats.limit_reached %}d-none{% endif %} mb-3 shadow-sm" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Daily SMS limit reached. No more messages can be sent today.</strong> (Max 50 SMS/day).
+                </div>
+
+                <!-- Holiday Form -->
+                <form id="holidayMessageForm" onsubmit="handleSendHolidayMessage(event)">
+                    <!-- Holiday Date Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Holiday / Delivery Off Date <span class="text-danger">*</span></label>
+                        <input type="date" id="holidayDateInput" name="holiday_date" class="form-control form-control-custom fw-bold text-primary" required min="{{ today_date }}">
+                    </div>
+
+                    <!-- Template Quick Fill -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small text-secondary">Quick Message Templates:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="setTemplate('gu')">
+                                🇬🇺 ગુજરાતી સંદેશ (Default)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setTemplate('en')">
+                                🇬🇧 English Message
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Message Textarea -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Message Text <span class="text-danger">*</span></label>
+                        <textarea id="holidayMessageText" name="message" class="form-control form-control-custom" rows="4" required placeholder="Type your holiday announcement message..."></textarea>
+                        <div class="form-text small text-muted">
+                            <i class="fas fa-info-circle me-1"></i> Configured sender number <strong>{{ sms_stats.sender_number }}</strong> will be included.
+                        </div>
+                    </div>
+
+                    <!-- Live Dispatch Status & Progress Area -->
+                    <div id="dispatchStatusArea" class="d-none mb-3 p-3 rounded-3 bg-light border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-primary" id="dispatchStatusText">Sending SMS broadcast...</span>
+                            <span class="badge bg-primary" id="dispatchProgressBadge">Processing</span>
+                        </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="dispatchProgressBar" style="width: 100%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between small text-secondary">
+                            <span>Successful: <strong class="text-success" id="dispatchSuccessCount">0</strong></span>
+                            <span>Failed / Skipped: <strong class="text-danger" id="dispatchFailedCount">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 pt-0 px-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" id="sendHolidayBtn" class="btn btn-danger px-4 py-2 fw-bold" {% if sms_stats.limit_reached %}disabled{% endif %}>
+                            <i class="fas fa-paper-plane me-2"></i> Send Holiday SMS to All Customers
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setTemplate(lang) {
+    const dateVal = document.getElementById('holidayDateInput').value;
+    const formattedDate = dateVal || '[તારીખ / Date]';
+    const sender = '{{ sms_stats.sender_number }}';
+
+    if (lang === 'gu') {
+        document.getElementById('holidayMessageText').value = 
+            `નમસ્તે ગ્રાહક મિત્રો, જણાવવાનું કે ${formattedDate} ના રોજ રજા હોવાથી દૂધ વિતરણ બંધ રહેશે. નિયમિત વિતરણ બીજા દિવસથી રાબેતા મુજબ શરૂ થશે. - ડેરીફ્લો (સંપર્ક: ${sender})`;
+    } else {
+        document.getElementById('holidayMessageText').value = 
+            `Dear Customer, please note that milk delivery will not be available on ${formattedDate} due to a holiday. Regular delivery resumes on the next day. - DairyFlow (Contact: ${sender})`;
+    }
+}
+
+// Set default message and wire event listener on load
+document.addEventListener('DOMContentLoaded', () => {
+    const holidayInput = document.getElementById('holidayDateInput');
+    if (holidayInput) {
+        // Set tomorrow as default date
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const yyyy = tomorrow.getFullYear();
+        const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const dd = String(tomorrow.getDate()).padStart(2, '0');
+        holidayInput.value = `${yyyy}-${mm}-${dd}`;
+        
+        holidayInput.addEventListener('change', () => {
+            const msg = document.getElementById('holidayMessageText')?.value || '';
+            if (!msg || msg.includes('નમસ્તે') || msg.includes('Dear Customer')) {
+                setTemplate('gu');
+            }
+        });
+    }
+    setTemplate('gu');
+});
+
+function handleSendHolidayMessage(event) {
+    event.preventDefault();
+    const holidayDate = document.getElementById('holidayDateInput').value;
+    const message = document.getElementById('holidayMessageText').value;
+    const btn = document.getElementById('sendHolidayBtn');
+    const statusArea = document.getElementById('dispatchStatusArea');
+
+    if (!holidayDate || !message) {
+        showToast('Please fill all fields', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    statusArea.classList.remove('d-none');
+    document.getElementById('dispatchStatusText').innerText = 'Broadcasting SMS to customers...';
+
+    fetch('/milkman/send_holiday_message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            holiday_date: holidayDate,
+            message: message
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            showToast(data.message, 'success');
+            document.getElementById('dispatchStatusText').innerText = 'Completed!';
+            document.getElementById('dispatchProgressBadge').className = 'badge bg-success';
+            document.getElementById('dispatchProgressBadge').innerText = 'Finished';
+            document.getElementById('dispatchSuccessCount').innerText = data.successful_count;
+            document.getElementById('dispatchFailedCount').innerText = data.failed_count;
+
+            // Update stats
+            if (data.stats) {
+                document.getElementById('modalSentCount').innerText = `${data.stats.total_sent_today} / 50`;
+                document.getElementById('modalRemainingCount').innerText = `${data.stats.remaining_today} SMS`;
+                document.getElementById('cardSmsSent').innerText = `${data.stats.total_sent_today} / 50`;
+                document.getElementById('cardSmsRemaining').innerText = `${data.stats.remaining_today} left`;
+
+                if (data.stats.limit_reached) {
+                    document.getElementById('limitReachedAlert').classList.remove('d-none');
+                    btn.disabled = true;
+                }
+            }
+
+            setTimeout(() => {
+                location.reload();
+            }, 2500);
+        } else {
+            showToast(data.message || 'Failed sending SMS', 'danger');
+            document.getElementById('dispatchStatusText').innerText = data.message;
+            document.getElementById('dispatchProgressBadge').className = 'badge bg-danger';
+            document.getElementById('dispatchProgressBadge').innerText = 'Limit Reached / Error';
+            if (data.limit_reached) {
+                document.getElementById('limitReachedAlert').classList.remove('d-none');
+                btn.disabled = true;
+            }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        btn.disabled = false;
+        showToast('Error communicating with server', 'danger');
+    });
+}
+</script>
+{% endblock %}

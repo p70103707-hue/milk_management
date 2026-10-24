@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <h1 data-i18n="nav_reports">Delivery Logs & Reports</h1>
+        <p class="text-secondary">Summary details of your daily and monthly distribution metrics.</p>
+    </div>
+
+    <!-- Daily Log -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <h4 class="text-primary mb-3"><i class="fas fa-calendar-day me-2"></i>Today's Deliveries</h4>
+            
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th data-i18n="customer_name">Customer Name</th>
+                            <th data-i18n="address">Address</th>
+                            <th data-i18n="quantity">Quantity</th>
+                            <th data-i18n="status">Status</th>
+                            <th data-i18n="amount">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if daily_deliveries %}
+                            {% for d in daily_deliveries %}
+                            <tr>
+                                <td class="fw-bold">{{ d.customer.name }}</td>
+                                <td>{{ d.customer.address }}</td>
+                                <td>{% if d.quantity_ml %}{{ d.quantity_ml }} ml ({{ d.quantity }} L){% else %}{{ d.quantity }} L{% endif %}</td>
+                                <td>
+                                    {% if d.status == 'Delivered' %}
+                                        <span class="badge-custom badge-delivered">Delivered</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped">Skipped</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold text-primary">₹{{ d.total_amount }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-secondary py-4">No deliveries made today.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly History -->
+    <div class="col-12">
+        <div class="glass-panel p-4">
+            <h4 class="text-primary mb-3"><i class="fas fa-history me-2"></i>Monthly Delivery Log</h4>
+            
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th data-i18n="delivery_date">Date</th>
+                            <th data-i18n="customer_name">Customer Name</th>
+                            <th data-i18n="quantity">Quantity</th>
+                            <th data-i18n="status">Status</th>
+                            <th data-i18n="amount">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if monthly_deliveries %}
+                            {% for d in monthly_deliveries %}
+                            <tr>
+                                <td>{{ d.date.strftime('%d-%b-%Y') }}</td>
+                                <td class="fw-bold">{{ d.customer.name }}</td>
+                                <td>{% if d.quantity_ml %}{{ d.quantity_ml }} ml ({{ d.quantity }} L){% else %}{{ d.quantity }} L{% endif %}</td>
+                                <td>
+                                    {% if d.status == 'Delivered' %}
+                                        <span class="badge-custom badge-delivered">Delivered</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped">Skipped</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold text-primary">₹{{ d.total_amount }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-secondary py-4">No history logged for this month.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

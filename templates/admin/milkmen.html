@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="fw-bold mb-1" data-i18n="nav_milkmen">🥛 Milkmen</h1>
+            <p class="text-secondary mb-0">Manage milkmen accounts, check active routes and verify permissions.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addMilkmanModal">
+                <i class="fas fa-plus me-2"></i>Add New Milkman
+            </button>
+        </div>
+    </div>
+
+    <!-- Search & Summary Bar -->
+    <div class="col-12 mb-3">
+        <div class="glass-panel p-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-6 col-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-input); color: var(--text-secondary);">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="searchMilkmanInput" class="form-control form-control-custom border-start-0" 
+                               placeholder="Search milkman by name or mobile number..." onkeyup="filterMilkmenTable()">
+                    </div>
+                </div>
+                <div class="col-md-6 col-12 text-md-end text-start">
+                    <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold">
+                        Total Milkmen: <span id="milkmenCount">{{ milkmen|length }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Milkmen Table -->
+    <div class="col-12">
+        <div class="glass-panel p-4">
+            <div class="table-responsive">
+                <table class="table table-custom align-middle" id="milkmenTable">
+                    <thead>
+                        <tr>
+                            <th data-i18n="milkman_name">Milkman Name</th>
+                            <th data-i18n="mobile_number">Mobile Number</th>
+                            <th>Allocated Customers</th>
+                            <th data-i18n="status">Status</th>
+                            <th class="text-end" data-i18n="action">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if milkmen %}
+                            {% for m in milkmen %}
+                            <tr class="milkman-row">
+                                <td class="fw-bold text-nowrap">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center bg-primary-subtle text-primary" style="width: 38px; height: 38px; font-size: 1.1rem;">
+                                            🥛
+                                        </div>
+                                        <div>
+                                            <span class="milkman-name d-block">{{ m.name }}</span>
+                                            {% if m.employee_code %}
+                                                <small class="text-muted">Code: {{ m.employee_code }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="milkman-mobile">{{ m.mobile }}</td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold">
+                                        <i class="fas fa-users me-1"></i>{{ m.allocated_customers|length }} Customers
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if m.status == 'Active' %}
+                                        <span class="badge-custom badge-delivered">Active</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped">Suspended</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-info me-2 px-3 fw-medium"
+                                            onclick="openManageAllocationsModal({{ m.id }}, '{{ m.name|escape }}')">
+                                        <i class="fas fa-user-friends me-1"></i>Allocations
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-2 px-3 fw-medium"
+                                            onclick="openEditMilkmanModal({{ m.id }}, '{{ m.name|escape }}', '{{ m.mobile|escape }}', '{{ m.status }}')">
+                                        <i class="fas fa-edit me-1"></i><span data-i18n="btn_edit">Edit</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger px-3 fw-medium"
+                                            onclick="openDeleteMilkmanModal({{ m.id }}, '{{ m.name|escape }}')">
+                                        <i class="fas fa-trash-alt me-1"></i><span data-i18n="btn_delete">Delete</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="noMilkmenRow">
+                                <td colspan="5" class="text-center text-secondary py-5">
+                                    <i class="fas fa-user-friends fa-2x mb-3 text-muted d-block"></i>
+                                    No milkmen registered yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     EDIT MILKMAN MODAL (Placed outside table to prevent overflow cut-off)
+     ============================================================ -->
+<div class="modal fade" id="editMilkmanModal" tabindex="-1" aria-labelledby="editMilkmanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title fw-bold text-primary" id="editMilkmanModalLabel">
+                    <i class="fas fa-user-edit me-2"></i>Edit Milkman Profile
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editMilkmanForm" method="POST" action="">
+                <div class="modal-body text-start pt-2">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="milkman_name">Milkman Name <span class="text-danger">*</span></label>
+                        <input type="text" id="editMilkmanName" name="name" class="form-control form-control-custom" placeholder="e.g. Ramesh Bhai" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="mobile_number">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" id="editMilkmanMobile" name="mobile" class="form-control form-control-custom" placeholder="e.g. 9988776655" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="status">Account Status <span class="text-danger">*</span></label>
+                        <select id="editMilkmanStatus" name="status" class="form-select form-control-custom" required>
+                            <option value="Active">Active</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">New Password (Optional)</label>
+                        <input type="password" id="editMilkmanPassword" name="password" class="form-control form-control-custom" placeholder="Leave blank to keep existing password">
+                        <div class="form-text small text-muted">Only fill this if you want to reset the milkman's password.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold" id="btnSaveMilkman">
+                        <i class="fas fa-save me-1"></i><span data-i18n="btn_save">Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     DELETE MILKMAN MODAL
+     ============================================================ -->
+<div class="modal fade" id="deleteMilkmanModal" tabindex="-1" aria-labelledby="deleteMilkmanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title fw-bold text-danger" id="deleteMilkmanModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start py-3">
+                <p class="mb-2">Are you sure you want to delete milkman <strong class="text-danger" id="deleteMilkmanName"></strong>?</p>
+                <div class="alert alert-warning small border-0 mb-0" style="background: rgba(245, 158, 11, 0.12); color: var(--warning); border-radius: 12px;">
+                    <i class="fas fa-info-circle me-1"></i> This will permanently remove their milkman account credentials from the system.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-2">
+                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteMilkmanForm" method="POST" action="" style="display:inline;">
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold">
+                        <i class="fas fa-trash-alt me-1"></i><span data-i18n="btn_delete">Delete Milkman</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ADD MILKMAN MODAL
+     ============================================================ -->
+<div class="modal fade" id="addMilkmanModal" tabindex="-1" aria-labelledby="addMilkmanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title fw-bold text-primary" id="addMilkmanModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Register New Milkman
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin.milkmen') }}" method="POST">
+                <div class="modal-body text-start pt-2">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="milkman_name">Milkman Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control form-control-custom" placeholder="e.g. Suresh Bhai" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small" data-i18n="mobile_number">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" name="mobile" class="form-control form-control-custom" placeholder="e.g. 9988776644" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Password <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control form-control-custom" placeholder="Enter password for milkman" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold" data-i18n="btn_add">
+                        <i class="fas fa-check me-1"></i>Add New Milkman
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MANAGE ALLOCATIONS MODAL
+     ============================================================ -->
+<div class="modal fade" id="manageAllocationsModal" tabindex="-1" aria-labelledby="manageAllocationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content glass-panel border shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-2">
+                <div>
+                    <h5 class="modal-title fw-bold text-primary" id="manageAllocationsModalLabel">
+                        <i class="fas fa-users-cog me-2"></i>Customer Allocations: <span id="allocMilkmanName" class="text-dark"></span>
+                    </h5>
+                    <p class="text-secondary small mb-0">Allocate or remove customer assignments for this milkman. Changes sync automatically to customer dashboards.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start pt-2">
+                <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Customer Name</th>
+                                <th>Mobile</th>
+                                <th>Society</th>
+                                <th>Allocation Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allocCustomersTableBody">
+                            {% for c in customers %}
+                            <tr data-cust-id="{{ c.id }}" data-milkman-id="{{ c.milkman_id or '' }}">
+                                <td class="fw-bold">{{ c.name }}</td>
+                                <td>{{ c.mobile }}</td>
+                                <td>{{ c.society.name if c.society else '-' }}</td>
+                                <td>
+                                    <span class="alloc-status-badge"></span>
+                                </td>
+                                <td class="text-end">
+                                    <form method="POST" action="{{ url_for('admin.allocate_customer') }}" class="d-inline">
+                                        <input type="hidden" name="customer_id" value="{{ c.id }}">
+                                        <input type="hidden" name="milkman_id" class="alloc-input-target" value="">
+                                        <input type="hidden" name="redirect_to" value="milkmen">
+                                        <button type="submit" class="btn btn-sm alloc-btn fw-semibold"></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openManageAllocationsModal(milkmanId, milkmanName) {
+    document.getElementById('allocMilkmanName').innerText = milkmanName;
+    const rows = document.querySelectorAll('#allocCustomersTableBody tr');
+    rows.forEach(row => {
+        const rowMilkmanId = row.getAttribute('data-milkman-id');
+        const badge = row.querySelector('.alloc-status-badge');
+        const inputTarget = row.querySelector('.alloc-input-target');
+        const btn = row.querySelector('.alloc-btn');
+        
+        if (rowMilkmanId == milkmanId) {
+            badge.className = 'badge alloc-status-badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1';
+            badge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Allocated to this Milkman';
+            inputTarget.value = ''; // Submit empty to unallocate
+            btn.className = 'btn btn-sm alloc-btn btn-outline-danger px-3';
+            btn.innerHTML = '<i class="fas fa-user-minus me-1"></i>Unallocate';
+        } else if (rowMilkmanId) {
+            badge.className = 'badge alloc-status-badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1';
+            badge.innerHTML = 'Other Milkman';
+            inputTarget.value = milkmanId; // Reallocate to this milkman
+            btn.className = 'btn btn-sm alloc-btn btn-outline-primary px-3';
+            btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Transfer Here';
+        } else {
+            badge.className = 'badge alloc-status-badge bg-warning-subtle text-warning rounded-pill px-2 py-1';
+            badge.innerHTML = 'Unallocated';
+            inputTarget.value = milkmanId; // Allocate to this milkman
+            btn.className = 'btn btn-sm alloc-btn btn-primary px-3';
+            btn.innerHTML = '<i class="fas fa-user-plus me-1"></i>Allocate';
+        }
+    });
+    const modalEl = document.getElementById('manageAllocationsModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function openEditMilkmanModal(id, name, mobile, status) {
+    document.getElementById('editMilkmanForm').action = '/admin/milkmen/edit/' + id;
+    document.getElementById('editMilkmanName').value = name;
+    document.getElementById('editMilkmanMobile').value = mobile;
+    document.getElementById('editMilkmanStatus').value = status;
+    document.getElementById('editMilkmanPassword').value = '';
+    
+    const modalEl = document.getElementById('editMilkmanModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function openDeleteMilkmanModal(id, name) {
+    document.getElementById('deleteMilkmanForm').action = '/admin/milkmen/delete/' + id;
+    document.getElementById('deleteMilkmanName').innerText = name;
+    
+    const modalEl = document.getElementById('deleteMilkmanModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function filterMilkmenTable() {
+    const input = document.getElementById('searchMilkmanInput').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.milkman-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const name = row.querySelector('.milkman-name')?.innerText.toLowerCase() || '';
+        const mobile = row.querySelector('.milkman-mobile')?.innerText.toLowerCase() || '';
+
+        if (name.includes(input) || mobile.includes(input)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    const countBadge = document.getElementById('milkmenCount');
+    if (countBadge) {
+        countBadge.innerText = visibleCount;
+    }
+}
+</script>
+{% endblock %}

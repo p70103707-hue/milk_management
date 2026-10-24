@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <h1 class="fw-bold text-primary mb-1"><i class="fas fa-sliders-h me-2"></i>System & SMS Gateway Settings</h1>
+        <p class="text-secondary mb-0">Configure system parameters, sender numbers, and SMS daily quota limits without hardcoded credentials.</p>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="glass-panel p-4 p-md-5 mb-4">
+            <h4 class="text-primary fw-bold mb-3"><i class="fas fa-comment-dots me-2"></i>SMS Configuration</h4>
+            <p class="text-secondary small mb-4">Messages sent from the Milkman portal (including holiday announcements) will utilize these settings and strictly respect the 50 SMS/day quota.</p>
+
+            <form action="{{ url_for('admin.settings') }}" method="POST">
+                <!-- Sender Number -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Configured Sender / Mobile Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-card"><i class="fas fa-phone-alt text-primary"></i></span>
+                        <input type="text" name="sms_sender_number" class="form-control form-control-custom" value="{{ sender_number }}" placeholder="6367335889" required>
+                    </div>
+                    <div class="form-text small text-muted">Default system sender number is configured to <strong>6367335889</strong>.</div>
+                </div>
+
+                <!-- Daily Quota Info (Read-only status) -->
+                <div class="p-3 rounded-4 mb-4" style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15);">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-secondary fw-semibold">Maximum Allowed Daily SMS:</span>
+                        <strong class="text-primary">50 SMS / Day</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-secondary fw-semibold">SMS Sent Today:</span>
+                        <strong class="text-dark">{{ today_stats.total_sent_today }} / 50</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-secondary fw-semibold">Remaining Today:</span>
+                        <strong class="text-success">{{ today_stats.remaining_today }} SMS</strong>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                    <a href="{{ url_for('admin.sms_logs') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-history me-1"></i> View SMS Logs
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                        <i class="fas fa-save me-1"></i> Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

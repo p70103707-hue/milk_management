@@ -1,0 +1,417 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center fade-in-up">
+    <!-- Breadcrumb & Back button -->
+    <div class="col-12 mb-3">
+        <div class="d-flex align-items-center justify-content-between">
+            <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+            <span class="badge bg-primary bg-opacity-15 text-primary px-3 py-2 rounded-pill fw-semibold">
+                <i class="fas fa-shield-alt me-1"></i> Secure Checkout Portal
+            </span>
+        </div>
+    </div>
+
+    <!-- Main Payment Container -->
+    <div class="col-lg-10 col-xl-9">
+        <div class="glass-panel p-4 p-md-5 mb-4">
+            <!-- Header Banner -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-4 mb-4 gap-3">
+                <div>
+                    <span class="badge bg-primary px-3 py-1 rounded-pill mb-2">
+                        <i class="fas fa-file-invoice-dollar me-1"></i> Invoice Details
+                    </span>
+                    <h2 class="fw-bold text-primary mb-1">Bill Payment Summary</h2>
+                    <p class="text-secondary small mb-0">Billing Period: <strong>{{ bill_month_name }} {{ bill_year }}</strong> | Reference ID: <code>INV-{{ "%05d"|format(payment.id) if payment.id else 'NEW' }}</code></p>
+                </div>
+                <div class="text-end">
+                    <span class="text-secondary small d-block mb-1">Payment Status</span>
+                    {% if payment_status == 'Paid' %}
+                        <span class="badge bg-success px-4 py-2 rounded-pill fs-6">
+                            <i class="fas fa-check-circle me-1"></i> PAID
+                        </span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark px-4 py-2 rounded-pill fs-6" id="paymentStatusBadge">
+                            <i class="fas fa-clock me-1"></i> PENDING
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Customer & Bill Information Grid -->
+            <div class="row g-4 mb-4">
+                <!-- Customer Details Column -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-4 h-100" style="background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.15);">
+                        <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">
+                            <i class="fas fa-user-circle me-2"></i>Customer Information
+                        </h6>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="text-secondary ps-0" style="width: 40%;">Customer Name:</td>
+                                    <td class="fw-bold text-dark">{{ customer.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Mobile Number:</td>
+                                    <td class="fw-semibold">{{ customer.mobile }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Society Name:</td>
+                                    <td class="fw-semibold text-primary">{{ customer.society.society_name if customer.society else 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">House / Address:</td>
+                                    <td class="fw-semibold">{{ customer.address or 'Standard Route' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bill Details Column -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-4 h-100" style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2);">
+                        <h6 class="text-success fw-bold mb-3 border-bottom pb-2">
+                            <i class="fas fa-calculator me-2"></i>Bill Breakdown
+                        </h6>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="text-secondary ps-0" style="width: 45%;">Bill Month & Year:</td>
+                                    <td class="fw-bold text-dark">{{ bill_month_name }} {{ bill_year }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Total Milk Quantity:</td>
+                                    <td class="fw-bold text-primary">{{ total_quantity }} Liters</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Milk Rate:</td>
+                                    <td class="fw-semibold text-warning">₹{{ milk_rate }}/L</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Total Bill Amount:</td>
+                                    <td class="fw-bold text-dark fs-6">₹{{ "%.2f"|format(total_bill_amount) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Amount Highlight Banner -->
+            <div class="rounded-4 p-4 mb-4 text-center" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.09), rgba(16, 185, 129, 0.09)); border: 2px solid rgba(37, 99, 235, 0.25);">
+                <div class="row align-items-center">
+                    <div class="col-sm-4 mb-2 mb-sm-0 border-end border-card">
+                        <small class="text-secondary d-block">Total Bill Amount</small>
+                        <h3 class="fw-bold text-primary mb-0">₹{{ "%.2f"|format(total_bill_amount) }}</h3>
+                    </div>
+                    <div class="col-sm-4 mb-2 mb-sm-0 border-end border-card">
+                        <small class="text-secondary d-block">Amount Paid</small>
+                        <h3 class="fw-bold text-success mb-0" id="displayAmountPaid">₹{{ "%.2f"|format(amount_paid) }}</h3>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-secondary d-block">Remaining Amount</small>
+                        <h3 class="fw-bold text-danger mb-0" id="displayRemainingAmount">₹{{ "%.2f"|format(remaining_amount) }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            {% if payment_status == 'Paid' %}
+                <!-- Already Paid Notification Box -->
+                <div class="alert alert-success d-flex align-items-center justify-content-between p-4 rounded-4 shadow-sm border-0 mb-4" role="alert">
+                    <div>
+                        <h5 class="alert-heading fw-bold mb-1"><i class="fas fa-check-circle me-2"></i>Payment Received & Verified</h5>
+                        <p class="mb-0 small text-success-emphasis">
+                            Payment of <strong>₹{{ "%.2f"|format(total_bill_amount) }}</strong> was completed via <strong>{{ payment.payment_method }}</strong>.
+                            {% if payment.transaction_id %} Transaction ID: <code>{{ payment.transaction_id }}</code>{% endif %}
+                        </p>
+                    </div>
+                    <a href="{{ url_for('customer.download_invoice', payment_id=payment.id) }}" class="btn btn-success px-4 py-2 fw-semibold">
+                        <i class="fas fa-file-pdf me-2"></i> Download Invoice
+                    </a>
+                </div>
+            {% else %}
+                <!-- PAYMENT OPTIONS SECTION (Option 1 & Option 2) -->
+                <div id="paymentOptionsSection">
+                    <h4 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-wallet me-2"></i>Select Payment Method
+                    </h4>
+
+                    <!-- Navigation Tabs for Option 1 and Option 2 -->
+                    <ul class="nav nav-pills nav-fill mb-4 p-1 rounded-3" id="paymentTabs" role="tablist" style="background: rgba(37, 99, 235, 0.08);">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold py-3 rounded-3" id="qr-tab" data-bs-toggle="tab" data-bs-target="#tab-qr" type="button" role="tab" aria-controls="tab-qr" aria-selected="true">
+                                <i class="fas fa-qrcode me-2"></i>Option 2: Scan QR Code to Pay (Instant)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold py-3 rounded-3" id="cod-tab" data-bs-toggle="tab" data-bs-target="#tab-cod" type="button" role="tab" aria-controls="tab-cod" aria-selected="false">
+                                <i class="fas fa-money-bill-wave me-2"></i>Option 1: Cash on Delivery / Cash Payment
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="paymentTabsContent">
+                        <!-- ============================================== -->
+                        <!-- OPTION 2: QR PAYMENT (Scan QR Code to Pay)     -->
+                        <!-- ============================================== -->
+                        <div class="tab-pane fade show active" id="tab-qr" role="tabpanel" aria-labelledby="qr-tab">
+                            <div class="p-4 rounded-4 text-center" style="background: rgba(37, 99, 235, 0.03); border: 1.5px solid rgba(37, 99, 235, 0.2);">
+                                <div class="badge bg-success bg-opacity-15 text-success px-3 py-2 rounded-pill fw-semibold mb-3">
+                                    <i class="fas fa-bolt me-1"></i> Instant UPI Payment (0% Extra Fees)
+                                </div>
+                                <h4 class="fw-bold text-dark mb-1">Scan QR Code to Pay</h4>
+                                <p class="text-secondary small mb-3">Scan this dynamic UPI QR code with any UPI app (BHIM, Google Pay, PhonePe, Paytm)</p>
+
+                                <!-- Visual High-Res UPI QR Code -->
+                                <div class="mx-auto my-3 p-3 bg-white rounded-4 shadow-sm d-inline-block" style="border: 3px solid #2563eb; width: 230px;">
+                                    <!-- Dynamic SVG QR Code Representation with UPI Branding -->
+                                    <svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                                        <!-- Background -->
+                                        <rect width="200" height="200" fill="#ffffff"/>
+                                        <!-- QR Corner Squares -->
+                                        <rect x="15" y="15" width="45" height="45" rx="6" fill="#1e293b"/>
+                                        <rect x="23" y="23" width="29" height="29" rx="3" fill="#ffffff"/>
+                                        <rect x="29" y="29" width="17" height="17" rx="2" fill="#2563eb"/>
+
+                                        <rect x="140" y="15" width="45" height="45" rx="6" fill="#1e293b"/>
+                                        <rect x="148" y="23" width="29" height="29" rx="3" fill="#ffffff"/>
+                                        <rect x="154" y="29" width="17" height="17" rx="2" fill="#2563eb"/>
+
+                                        <rect x="15" y="140" width="45" height="45" rx="6" fill="#1e293b"/>
+                                        <rect x="23" y="148" width="29" height="29" rx="3" fill="#ffffff"/>
+                                        <rect x="29" y="154" width="17" height="17" rx="2" fill="#2563eb"/>
+
+                                        <!-- Synthetic data matrix pattern -->
+                                        <rect x="70" y="20" width="10" height="10" fill="#1e293b"/>
+                                        <rect x="90" y="20" width="20" height="10" fill="#1e293b"/>
+                                        <rect x="120" y="20" width="10" height="10" fill="#1e293b"/>
+                                        <rect x="70" y="40" width="30" height="10" fill="#1e293b"/>
+                                        <rect x="110" y="40" width="15" height="10" fill="#1e293b"/>
+                                        <rect x="80" y="60" width="40" height="10" fill="#1e293b"/>
+                                        
+                                        <rect x="20" y="70" width="10" height="20" fill="#1e293b"/>
+                                        <rect x="40" y="80" width="20" height="10" fill="#1e293b"/>
+                                        <rect x="70" y="80" width="15" height="15" fill="#1e293b"/>
+                                        <rect x="95" y="75" width="10" height="20" fill="#1e293b"/>
+                                        <rect x="115" y="80" width="20" height="10" fill="#1e293b"/>
+                                        <rect x="145" y="70" width="15" height="15" fill="#1e293b"/>
+                                        <rect x="170" y="80" width="15" height="10" fill="#1e293b"/>
+
+                                        <!-- Center Logo -->
+                                        <circle cx="100" cy="100" r="18" fill="#2563eb"/>
+                                        <text x="100" y="106" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">₹</text>
+
+                                        <rect x="20" y="110" width="20" height="15" fill="#1e293b"/>
+                                        <rect x="50" y="115" width="15" height="15" fill="#1e293b"/>
+                                        <rect x="75" y="110" width="15" height="10" fill="#1e293b"/>
+                                        <rect x="120" y="110" width="20" height="15" fill="#1e293b"/>
+                                        <rect x="150" y="115" width="30" height="10" fill="#1e293b"/>
+
+                                        <rect x="70" y="140" width="20" height="10" fill="#1e293b"/>
+                                        <rect x="100" y="140" width="15" height="20" fill="#1e293b"/>
+                                        <rect x="125" y="145" width="20" height="10" fill="#1e293b"/>
+                                        <rect x="160" y="140" width="20" height="15" fill="#1e293b"/>
+
+                                        <rect x="70" y="170" width="35" height="15" fill="#1e293b"/>
+                                        <rect x="115" y="170" width="20" height="10" fill="#1e293b"/>
+                                        <rect x="145" y="165" width="35" height="15" fill="#1e293b"/>
+                                    </svg>
+                                </div>
+
+                                <div class="mb-3">
+                                    <span class="fs-4 fw-bold text-success">₹{{ "%.2f"|format(total_bill_amount) }}</span>
+                                    <p class="text-muted small mb-0">UPI ID: <strong>dairyflow@upi</strong> | Ref: <code>DF-{{ payment.billing_month }}-{{ payment.id }}</code></p>
+                                </div>
+
+                                <!-- Transaction UTR Input Field -->
+                                <div class="row justify-content-center mb-3">
+                                    <div class="col-md-8 col-lg-6 text-start">
+                                        <label class="form-label small fw-semibold text-secondary">Transaction ID / UPI UTR Reference Number (Optional):</label>
+                                        <input type="text" id="qrTxnIdInput" class="form-control form-control-custom text-center fw-bold" placeholder="e.g. 425619874211 or UPI Ref ID">
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap justify-content-center gap-3">
+                                    <button type="button" class="btn btn-primary btn-lg px-5 py-3 fw-bold shadow" onclick="submitPayment('UPI QR')">
+                                        <i class="fas fa-check-circle me-2"></i> I Have Paid ₹{{ "%.2f"|format(total_bill_amount) }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================== -->
+                        <!-- OPTION 1: COD / CASH PAYMENT                   -->
+                        <!-- ============================================== -->
+                        <div class="tab-pane fade" id="tab-cod" role="tabpanel" aria-labelledby="cod-tab">
+                            <div class="p-4 rounded-4" style="background: rgba(16, 185, 129, 0.03); border: 1.5px solid rgba(16, 185, 129, 0.25);">
+                                <div class="text-center mb-4">
+                                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle d-inline-block mb-3" style="width:64px; height:64px;">
+                                        <i class="fas fa-hand-holding-usd fa-2x"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-dark">Cash on Delivery / Cash Payment</h4>
+                                    <p class="text-secondary small mb-0">Pay directly in cash to your milkman during your next milk delivery</p>
+                                </div>
+
+                                <div class="row g-3 justify-content-center mb-4">
+                                    <div class="col-md-8">
+                                        <div class="glass-panel p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="text-secondary">Amount to be Paid in Cash:</span>
+                                                <span class="fs-4 fw-bold text-success">₹{{ "%.2f"|format(total_bill_amount) }}</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="text-secondary">Milk Delivery Route Milkman:</span>
+                                                <span class="fw-semibold text-primary">{{ milkman.name if milkman else 'Assigned Milkman' }} ({{ milkman.mobile if milkman else '6367335889' }})</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="text-secondary">Status:</span>
+                                                <span class="badge bg-warning text-dark px-3 py-1 rounded-pill">Pay Cash on Delivery</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-success btn-lg px-5 py-3 fw-bold shadow" onclick="submitPayment('Cash on Delivery (COD)')">
+                                        <i class="fas fa-handshake me-2"></i> Select Cash on Delivery (₹{{ "%.2f"|format(total_bill_amount) }})
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Payment History Table -->
+            <div class="mt-5 pt-4 border-top">
+                <h5 class="fw-bold text-primary mb-3"><i class="fas fa-history me-2"></i>Recent Payment History</h5>
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0">
+                        <thead>
+                            <tr class="text-secondary">
+                                <th>Billing Month</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Transaction ID</th>
+                                <th>Status</th>
+                                <th class="text-end">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold text-primary">{{ payment.billing_month }}</td>
+                                <td class="fw-bold text-success">₹{{ "%.2f"|format(payment.amount) }}</td>
+                                <td>{{ payment.payment_method or 'Pending' }}</td>
+                                <td><code>{{ payment.transaction_id or '-' }}</code></td>
+                                <td>
+                                    {% if payment.payment_status == 'Paid' %}
+                                        <span class="badge-custom badge-delivered"><i class="fas fa-check-circle me-1"></i>Paid</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-pending"><i class="fas fa-clock me-1"></i>Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if payment.payment_status == 'Paid' %}
+                                        <a href="{{ url_for('customer.download_invoice', payment_id=payment.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download me-1"></i> PDF
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted small">Generated on Payment</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Successful Celebration Modal -->
+<div class="modal fade" id="paymentSuccessModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-0 text-center p-4">
+            <div class="modal-body py-4">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center text-white mb-3" style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); font-size: 2.5rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="fw-bold text-success mb-2">Payment Successful!</h3>
+                <p class="text-secondary mb-4" id="successModalMessage">Your payment has been successfully processed and verified.</p>
+                
+                <div class="glass-panel p-3 mb-4 text-start" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-secondary small">Amount Paid:</span>
+                        <strong class="text-success" id="successAmount">₹{{ "%.2f"|format(total_bill_amount) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-secondary small">Transaction ID:</span>
+                        <code id="successTxnId">TXN-0000</code>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-secondary small">Date:</span>
+                        <strong class="text-dark" id="successDate">{{ today_date or 'Today' }}</strong>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a id="successInvoiceBtn" href="#" class="btn btn-primary py-2 fw-semibold">
+                        <i class="fas fa-file-pdf me-2"></i> Download Official Invoice PDF
+                    </a>
+                    <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary py-2">
+                        Return to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function submitPayment(method) {
+    const paymentId = parseInt("{{ payment.id }}", 10);
+    const txnInput = document.getElementById('qrTxnIdInput');
+    const userTxnId = txnInput ? txnInput.value : '';
+
+    showToast('Submitting payment details...', 'info');
+
+    fetch(`/customer/pay/${paymentId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            payment_method: method,
+            transaction_id: userTxnId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Update modal details
+            document.getElementById('successTxnId').innerText = data.transaction_id;
+            document.getElementById('successDate').innerText = data.payment_date;
+            document.getElementById('successInvoiceBtn').href = data.invoice_url;
+            document.getElementById('successModalMessage').innerText = data.message;
+
+            // Show success modal
+            const successModal = new bootstrap.Modal(document.getElementById('paymentSuccessModal'));
+            successModal.show();
+        } else {
+            showToast(data.message || 'Payment submission failed', 'danger');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('An error occurred. Please try again.', 'danger');
+    });
+}
+</script>
+{% endblock %}

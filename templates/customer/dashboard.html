@@ -1,0 +1,561 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- 1. Holiday Announcements Banner if any recent holiday announced -->
+    {% if recent_holidays %}
+    <div class="col-12 mb-3">
+        {% for h in recent_holidays[:1] %}
+        <div class="alert glass-panel border-0 p-3 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2" 
+             style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.08)); border-left: 5px solid var(--danger) !important;" role="alert">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-danger bg-opacity-15 text-danger rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+                    <i class="fas fa-bullhorn fa-lg"></i>
+                </div>
+                <div>
+                    <strong class="text-danger">📢 Milkman Holiday Announcement ({{ h.holiday_date.strftime('%d-%b-%Y') }}):</strong>
+                    <div class="text-dark small mb-0">{{ h.message }}</div>
+                </div>
+            </div>
+            <span class="badge bg-danger bg-opacity-15 text-danger rounded-pill px-3 py-2">
+                <i class="fas fa-calendar-times me-1"></i> Delivery Off
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 2. Customer Profile & Dashboard Header -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.09), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(37, 99, 235, 0.2);">
+            <div class="row align-items-center">
+                <div class="col-lg-7 mb-3 mb-lg-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 58px; height: 58px; background: linear-gradient(135deg, var(--primary), var(--accent)); font-size: 1.6rem; font-weight: 700; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
+                            {{ customer.name[0]|upper if customer.name else 'C' }}
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-primary bg-opacity-15 text-primary rounded-pill px-3 py-1 fw-semibold">
+                                    <i class="fas fa-user-check me-1"></i> Customer Portal
+                                </span>
+                                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-2 py-1 small">Active Account</span>
+                            </div>
+                            <h2 class="mb-0 fw-bold text-primary">{{ customer.name }}</h2>
+                            <p class="text-secondary small mb-0">
+                                <i class="fas fa-phone-alt me-1"></i>{{ customer.mobile }} &nbsp;|&nbsp; 
+                                <i class="fas fa-map-marker-alt me-1"></i>{{ customer.address or 'Standard Delivery' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Info Pills & Message Milkman Action -->
+                <div class="col-lg-5">
+                    <div class="d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
+                        <div class="glass-panel px-3 py-2 text-center" style="min-width: 110px;">
+                            <small class="text-secondary d-block" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i>Society</small>
+                            <span class="fw-bold text-primary" style="font-size: 0.95rem;">{{ customer.society.society_name if customer.society else 'N/A' }}</span>
+                        </div>
+                        <div class="glass-panel px-3 py-2 text-center" style="min-width: 100px;">
+                            <small class="text-secondary d-block" style="font-size: 0.75rem;"><i class="fas fa-tag me-1"></i>Milk Rate</small>
+                            <span class="fw-bold text-success" style="font-size: 0.95rem;">₹{{ active_rate }}/L</span>
+                        </div>
+                        <a href="{{ url_for('customer.report') }}" class="btn btn-primary px-3 py-2 fw-semibold d-flex align-items-center gap-2 shadow-sm">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Report</span>
+                        </a>
+                        {% if milkman %}
+                        <button type="button" class="btn btn-outline-primary px-3 py-2 fw-semibold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#messageMilkmanModal">
+                            <i class="fas fa-comment-dots text-primary"></i>
+                            <span>Message Milkman</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Dedicated "My Milkman" Section (Visible to Allocated Customers) -->
+    <div class="col-12 mb-4" id="myMilkmanSection">
+        {% if milkman %}
+        <div class="glass-panel p-4 position-relative overflow-hidden" 
+             style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(37, 99, 235, 0.05)); border: 1.5px solid rgba(16, 185, 129, 0.35); box-shadow: 0 4px 18px rgba(16, 185, 129, 0.09);">
+            <div class="row align-items-center">
+                <!-- Left: Assigned Milkman Basic & Profile Details -->
+                <div class="col-lg-7 col-md-12 mb-3 mb-lg-0">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" 
+                             style="width: 62px; height: 62px; background: linear-gradient(135deg, #10b981, #059669); font-size: 1.7rem; font-weight: 700; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+                            🥛
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-1 fw-bold" style="font-size: 0.85rem;" id="allocatedStatusBadge">
+                                    <i class="fas fa-check-circle me-1"></i> Allocated to You
+                                </span>
+                                <span class="badge bg-primary bg-opacity-15 text-primary rounded-pill px-2 py-1 small">
+                                    <i class="fas fa-user-tie me-1"></i> Assigned Milkman
+                                </span>
+                                {% if milkman.employee_code %}
+                                    <span class="badge bg-secondary bg-opacity-15 text-secondary rounded-pill px-2 py-1 small">
+                                        ID: {{ milkman.employee_code }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <h3 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                                <span class="text-primary" id="allocatedMilkmanName">{{ milkman.name }}</span>
+                            </h3>
+                            <div class="text-secondary small mb-2 d-flex flex-wrap align-items-center gap-3">
+                                <span>
+                                    <i class="fas fa-phone-alt text-success me-1"></i>
+                                    Mobile: <strong class="text-dark" id="allocatedMilkmanMobile">{{ milkman.mobile }}</strong>
+                                </span>
+                                {% if milkman.status %}
+                                <span>
+                                    <i class="fas fa-shield-alt text-info me-1"></i>
+                                    Status: <strong class="text-success">{{ milkman.status }}</strong>
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if milkman.details %}
+                            <div class="p-2 rounded-2 mt-1" style="background: rgba(255, 255, 255, 0.7); border: 1px dashed rgba(16, 185, 129, 0.35); font-size: 0.85rem;">
+                                <i class="fas fa-route text-success me-1"></i>
+                                <span class="text-muted fw-semibold">Profile & Route Notes:</span> 
+                                <span class="text-dark" id="allocatedMilkmanDetails">{{ milkman.details }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Quick Contact Action Buttons -->
+                <div class="col-lg-5 col-md-12">
+                    <div class="d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
+                        <a href="tel:{{ milkman.mobile }}" class="btn btn-outline-success px-3 py-2 fw-semibold d-flex align-items-center gap-2 shadow-sm" id="callMilkmanBtn">
+                            <i class="fas fa-phone-alt"></i>
+                            <span>Call Milkman</span>
+                        </a>
+                        <a href="https://wa.me/91{{ milkman.mobile }}?text=Hello%20{{ milkman.name|urlencode }},%20I%20am%20{{ customer.name|urlencode }}%20from%20{{ customer.society.society_name if customer.society else 'Society' }}." 
+                           target="_blank" rel="noopener noreferrer" 
+                           class="btn btn-success px-3 py-2 fw-semibold d-flex align-items-center gap-2 shadow-sm" id="whatsappMilkmanBtn">
+                            <i class="fab fa-whatsapp fa-lg"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                        <button type="button" class="btn btn-primary px-3 py-2 fw-semibold d-flex align-items-center gap-2 shadow-sm" 
+                                data-bs-toggle="modal" data-bs-target="#messageMilkmanModal">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Send Note</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Unallocated State: Clean & Friendly Notice -->
+        <div class="glass-panel p-4 position-relative overflow-hidden" 
+             style="background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(203, 213, 225, 0.08)); border: 1.5px dashed rgba(148, 163, 184, 0.4);">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-secondary bg-opacity-10 text-secondary flex-shrink-0" 
+                         style="width: 54px; height: 54px; font-size: 1.4rem;">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h5 class="mb-0 fw-bold text-secondary">My Milkman</h5>
+                            <span class="badge bg-secondary bg-opacity-20 text-secondary rounded-pill px-3 py-1 small" id="unallocatedStatusBadge">
+                                <i class="fas fa-hourglass-half me-1"></i> Not Allocated
+                            </span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            You are not currently allocated to a delivery milkman. Your society administrator or dairy team will assign your route partner shortly.
+                        </p>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge bg-light text-secondary border px-3 py-2">
+                        <i class="fas fa-info-circle me-1"></i> Contact Society Admin for Allocation
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 4. Month and Year Selector Filter Bar -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-3">
+            <form method="GET" action="{{ url_for('customer.dashboard') }}" id="periodFilterForm" class="row g-2 align-items-center">
+                <div class="col-auto d-flex align-items-center text-primary fw-bold">
+                    <i class="fas fa-filter me-2"></i> Select Month & Year:
+                </div>
+                
+                <!-- Month Dropdown -->
+                <div class="col-12 col-sm-auto flex-grow-1 flex-sm-grow-0" style="min-width: 170px;">
+                    <select name="month" id="monthSelect" class="form-select form-control-custom fw-semibold" onchange="document.getElementById('periodFilterForm').submit()">
+                        {% for m_num, m_name in available_months %}
+                            <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>
+                                {{ m_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Year Dropdown -->
+                <div class="col-12 col-sm-auto flex-grow-1 flex-sm-grow-0" style="min-width: 130px;">
+                    <select name="year" id="yearSelect" class="form-select form-control-custom fw-semibold" onchange="document.getElementById('periodFilterForm').submit()">
+                        {% for y in available_years %}
+                            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>
+                                {{ y }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-sm-auto ms-sm-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-3">
+                        <i class="fas fa-search me-1"></i> View Records
+                    </button>
+                    <a href="{{ url_for('customer.report', month=selected_month, year=selected_year) }}" class="btn btn-outline-primary px-3 fw-semibold">
+                        <i class="fas fa-file-invoice me-1"></i> Full Report
+                    </a>
+                    {% if not is_current_period %}
+                    <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary px-3" title="Back to current month">
+                        <i class="fas fa-undo me-1"></i> Current Month
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. KPI Summary Cards Grid -->
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100">
+            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-circle d-inline-block mb-2" style="width:44px; height:44px;">
+                <i class="fas fa-wine-bottle fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Total Milk Quantity</h6>
+            <h3 class="fw-bold text-primary mb-0">{{ total_quantity }} <span style="font-size:1rem;">L</span></h3>
+            <small class="text-muted">{{ selected_month_name }} {{ selected_year }}</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100">
+            <div class="bg-info bg-opacity-10 text-info p-2 rounded-circle d-inline-block mb-2" style="width:44px; height:44px;">
+                <i class="fas fa-calendar-check fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Delivery Days</h6>
+            <h3 class="fw-bold text-info mb-0">{{ total_delivery_days }} <span style="font-size:1rem;">Days</span></h3>
+            <small class="text-muted">Delivered</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100">
+            <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-circle d-inline-block mb-2" style="width:44px; height:44px;">
+                <i class="fas fa-tag fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Milk Rate</h6>
+            <h3 class="fw-bold text-warning mb-0">₹{{ active_rate }}<span style="font-size:0.9rem;">/L</span></h3>
+            <small class="text-muted">Per liter cost</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100" style="border: 2px solid rgba(37, 99, 235, 0.25);">
+            <div class="bg-success bg-opacity-10 text-success p-2 rounded-circle d-inline-block mb-2" style="width:44px; height:44px;">
+                <i class="fas fa-rupee-sign fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Total Monthly Amount</h6>
+            <h3 class="fw-bold text-success mb-0">₹{{ "%.2f"|format(total_monthly_amount) }}</h3>
+            <small class="text-muted">Calculated Total</small>
+        </div>
+    </div>
+
+    <!-- 5. Monthly Bill & Dedicated Payment CTA Box -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(16, 185, 129, 0.05)); border: 1.5px solid rgba(37, 99, 235, 0.25);">
+            <div class="row align-items-center">
+                <div class="col-md-7 mb-3 mb-md-0">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary px-3 py-1 rounded-pill" style="font-size:0.85rem;">
+                            <i class="fas fa-file-invoice-dollar me-1"></i> {{ selected_month_name }} {{ selected_year }} Bill
+                        </span>
+                        
+                        {% if payment and payment.payment_status == 'Paid' %}
+                            <span class="badge bg-success px-3 py-1 rounded-pill" id="billStatusBadge" style="font-size:0.85rem;">
+                                <i class="fas fa-check-circle me-1"></i> PAID
+                            </span>
+                        {% elif not is_month_completed %}
+                            <span class="badge bg-secondary px-3 py-1 rounded-pill" id="billStatusBadge" style="font-size:0.85rem;">
+                                <i class="fas fa-hourglass-half me-1"></i> IN PROGRESS
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark px-3 py-1 rounded-pill" id="billStatusBadge" style="font-size:0.85rem;">
+                                <i class="fas fa-exclamation-circle me-1"></i> PENDING
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-4 text-secondary small">
+                        <div><i class="fas fa-tint text-primary me-1"></i> Total Quantity: <strong class="text-primary">{{ total_quantity }} L</strong></div>
+                        <div><i class="fas fa-tags text-warning me-1"></i> Rate: <strong class="text-warning">₹{{ active_rate }}/L</strong></div>
+                        <div><i class="fas fa-calculator text-success me-1"></i> Total Amount: <strong class="text-success fw-bold" style="font-size:1.05rem;">₹{{ "%.2f"|format(total_monthly_amount) }}</strong></div>
+                    </div>
+
+                    {% if not is_month_completed %}
+                        <div class="mt-2 text-muted small">
+                            <i class="fas fa-info-circle text-info me-1"></i>
+                            <em>Note: Payment button enables on 1st of next month once {{ selected_month_name }} {{ selected_year }} is completed. You can also view bill details or pay earlier via Payment page.</em>
+                        </div>
+                    {% elif payment and payment.payment_status == 'Paid' %}
+                        <div class="mt-2 text-success small" id="paidInfoSnippet">
+                            <i class="fas fa-check-double me-1"></i> Paid on: <strong>{{ payment.payment_date.strftime('%d-%m-%Y') if payment.payment_date else 'Completed' }}</strong>
+                            {% if payment.payment_method %} | Method: <strong>{{ payment.payment_method }}</strong>{% endif %}
+                            {% if payment.transaction_id %} | TXN: <code>{{ payment.transaction_id }}</code>{% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Action Button Area: Opens Dedicated Payment Page -->
+                <div class="col-md-5 text-md-end" id="billActionContainer">
+                    {% if payment and payment.payment_status == 'Paid' %}
+                        <div class="d-flex flex-column flex-sm-row justify-content-md-end gap-2 align-items-center">
+                            <a href="{{ url_for('customer.payment_details', payment_id=payment.id) }}" class="btn btn-outline-success px-4 py-2 fw-bold">
+                                <i class="fas fa-receipt me-2"></i> View Receipt
+                            </a>
+                            <a href="{{ url_for('customer.download_invoice', payment_id=payment.id) }}" class="btn btn-outline-primary px-3 py-2 fw-semibold">
+                                <i class="fas fa-file-pdf me-2 text-danger"></i> Invoice PDF
+                            </a>
+                        </div>
+                    {% else %}
+                        {% if payment and total_monthly_amount > 0 %}
+                            <a href="{{ url_for('customer.payment_details', payment_id=payment.id) }}" class="btn btn-primary btn-lg px-4 py-3 fw-bold shadow">
+                                <i class="fas fa-credit-card me-2"></i> Payment Details & Options (₹{{ "%.2f"|format(total_monthly_amount) }})
+                            </a>
+                        {% else %}
+                            <button class="btn btn-secondary px-4 py-2" disabled>
+                                No Bill Due
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Monthly Milk Consumption Table -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="text-primary mb-1">
+                        <i class="fas fa-clipboard-list me-2"></i>Monthly Milk Consumption Records
+                    </h4>
+                    <p class="text-secondary small mb-0">
+                        Complete daily consumption records for <strong>{{ selected_month_name }} {{ selected_year }}</strong> automatically synced from delivery logs.
+                    </p>
+                </div>
+                <div class="text-end d-flex align-items-center gap-2">
+                    <a href="{{ url_for('customer.report', month=selected_month, year=selected_year) }}" class="btn btn-sm btn-outline-primary fw-semibold">
+                        <i class="fas fa-file-invoice me-1"></i> Customer Report
+                    </a>
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-semibold">
+                        <i class="fas fa-calendar-day me-1"></i> {{ daily_records|length }} Days in Month
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive rounded-3">
+                <table class="table table-custom align-middle mb-0" id="consumptionTable">
+                    <thead>
+                        <tr class="text-secondary" style="border-bottom: 2px solid var(--border-card);">
+                            <th class="ps-3" style="min-width: 70px;">Date</th>
+                            <th style="min-width: 120px;">Day</th>
+                            <th style="min-width: 130px;">Milk Quantity</th>
+                            <th style="min-width: 110px;">Milk Rate</th>
+                            <th style="min-width: 130px;">Daily Amount</th>
+                            <th class="text-center" style="min-width: 150px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in daily_records %}
+                        <tr class="{% if row.is_delivered %}table-row-delivered{% else %}table-row-nomilk{% endif %}">
+                            <td class="ps-3 fw-bold text-primary">
+                                {{ row.day_num }}
+                            </td>
+                            <td class="text-secondary">
+                                <span class="fw-medium">{{ row.day_name }}</span>
+                            </td>
+                            <td>
+                                {% if row.is_delivered %}
+                                    <span class="fw-bold text-primary">{{ row.quantity }} L</span>
+                                    {% if row.delivery_count > 1 %}
+                                        <span class="badge bg-primary bg-opacity-15 text-primary rounded-pill small ms-1" style="font-size:0.75rem;">
+                                            {{ row.delivery_count }} deliveries
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">0 L</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-secondary">₹{{ row.rate }}</span>
+                            </td>
+                            <td>
+                                {% if row.is_delivered %}
+                                    <strong class="text-success">₹{{ "%.2f"|format(row.amount) }}</strong>
+                                {% else %}
+                                    <span class="text-muted">₹0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if row.is_delivered %}
+                                    <span class="badge-custom badge-delivered d-inline-flex align-items-center gap-1">
+                                        <i class="fas fa-check-circle"></i> Delivered
+                                    </span>
+                                {% else %}
+                                    <span class="badge-custom badge-skipped d-inline-flex align-items-center gap-1" style="background-color: rgba(108, 117, 125, 0.15); color: var(--text-secondary);">
+                                        <i class="fas fa-times-circle"></i> No Milk / Not Delivered
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- Table Footer with Automatic Totals -->
+                    <tfoot>
+                        <tr class="glass-panel" style="background: var(--bg-card); font-size: 1.05rem; border-top: 2px solid var(--primary);">
+                            <th class="ps-3 fw-bold text-primary" colspan="2">
+                                <i class="fas fa-calculator me-1"></i> Monthly Summary:
+                            </th>
+                            <th class="fw-bold text-primary">
+                                {{ total_quantity }} L
+                            </th>
+                            <th class="fw-bold text-warning">
+                                ₹{{ active_rate }}/L
+                            </th>
+                            <th class="fw-bold text-success" style="font-size: 1.15rem;">
+                                ₹{{ "%.2f"|format(total_monthly_amount) }}
+                            </th>
+                            <th class="text-center">
+                                <span class="badge bg-primary px-3 py-1 rounded-pill">
+                                    {{ total_delivery_days }} Delivery Days
+                                </span>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Payment History (All Previous Months) -->
+    {% if payment_history %}
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <h5 class="text-primary mb-3">
+                <i class="fas fa-history me-2"></i> All Billing & Payment Records
+            </h5>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr class="text-secondary">
+                            <th>Billing Month</th>
+                            <th>Total Bill</th>
+                            <th>Status</th>
+                            <th>Payment Date</th>
+                            <th>Payment Method</th>
+                            <th>Transaction ID</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payment_history %}
+                        <tr>
+                            <td class="fw-bold text-primary">{{ p.billing_month }}</td>
+                            <td class="fw-bold text-success">₹{{ "%.2f"|format(p.amount) }}</td>
+                            <td>
+                                {% if p.payment_status == 'Paid' %}
+                                    <span class="badge-custom badge-delivered"><i class="fas fa-check-circle me-1"></i>Paid</span>
+                                {% else %}
+                                    <span class="badge-custom badge-pending"><i class="fas fa-clock me-1"></i>Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-secondary small">
+                                {{ p.payment_date.strftime('%d-%m-%Y %H:%M') if p.payment_date else '-' }}
+                            </td>
+                            <td class="text-secondary small">
+                                {{ p.payment_method or '-' }}
+                            </td>
+                            <td class="text-secondary small">
+                                {% if p.transaction_id %}
+                                    <code>{{ p.transaction_id }}</code>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <a href="{{ url_for('customer.payment_details', payment_id=p.id) }}" class="btn btn-sm btn-outline-primary" title="View Payment Details">
+                                        <i class="fas fa-info-circle me-1"></i> Details
+                                    </a>
+                                    {% if p.payment_status == 'Paid' %}
+                                        <a href="{{ url_for('customer.download_invoice', payment_id=p.id) }}" class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-download me-1"></i> PDF
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Message Milkman -->
+<div class="modal fade" id="messageMilkmanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="fas fa-paper-plane me-2"></i>Message Your Milkman</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('customer.message_milkman') }}" method="POST">
+                <div class="modal-body">
+                    <p class="text-secondary small mb-3">Send a direct delivery request or note to your assigned milkman.</p>
+                    
+                    <div class="glass-panel p-3 mb-3" style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15);">
+                        <small class="text-secondary d-block">Assigned Milkman:</small>
+                        <strong class="text-primary">{{ milkman.name if milkman else 'Delivery Milkman' }}</strong>
+                        <span class="text-muted small">({{ milkman.mobile if milkman else '6367335889' }})</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Your Message / Instruction:</label>
+                        <textarea name="message" class="form-control form-control-custom" rows="4" placeholder="e.g. Please bring 1.5L extra milk tomorrow, or skip delivery on Friday." required></textarea>
+                    </div>
+
+                    <div class="form-text small text-muted">
+                        <i class="fas fa-info-circle me-1"></i>The milkman will receive this message directly.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                        <i class="fas fa-send me-1"></i> Send Message
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

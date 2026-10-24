@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 class="fw-bold text-primary mb-1"><i class="fas fa-calendar-times me-2"></i>Holiday Message Logs & SMS History</h1>
+                <p class="text-secondary mb-0">Track all holiday announcements dispatched to customers via SMS service.</p>
+            </div>
+            <a href="{{ url_for('milkman.dashboard') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- SMS Quota Summary Card -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(6, 182, 212, 0.05)); border: 1.5px solid rgba(37, 99, 235, 0.2);">
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center border-end border-card mb-3 mb-md-0">
+                    <small class="text-secondary d-block">Sender Mobile Number</small>
+                    <h4 class="fw-bold text-primary mb-0"><i class="fas fa-phone-alt me-2"></i>{{ stats.sender_number }}</h4>
+                </div>
+                <div class="col-md-3 text-center border-end border-card mb-3 mb-md-0">
+                    <small class="text-secondary d-block">Total SMS Sent Today</small>
+                    <h3 class="fw-bold text-dark mb-0">{{ stats.total_sent_today }} <span class="fs-6 text-muted">/ 50 Max</span></h3>
+                </div>
+                <div class="col-md-3 text-center border-end border-card mb-3 mb-md-0">
+                    <small class="text-secondary d-block">Remaining SMS Today</small>
+                    <h3 class="fw-bold {% if stats.remaining_today > 10 %}text-success{% else %}text-danger{% endif %} mb-0">{{ stats.remaining_today }} SMS</h3>
+                </div>
+                <div class="col-md-3 text-center">
+                    <small class="text-secondary d-block">Daily SMS Quota Status</small>
+                    {% if stats.limit_reached %}
+                        <span class="badge bg-danger px-3 py-2 rounded-pill fs-6"><i class="fas fa-ban me-1"></i> Limit Reached (50/50)</span>
+                    {% else %}
+                        <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fas fa-check me-1"></i> Active / Ready</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holiday Messages History Table -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <h4 class="text-primary mb-3"><i class="fas fa-history me-2"></i>Sent Holiday Announcements</h4>
+            
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr class="text-secondary">
+                            <th>Holiday Date</th>
+                            <th>Broadcast Message</th>
+                            <th>Sender Number</th>
+                            <th>Delivered Count</th>
+                            <th>Status</th>
+                            <th>Dispatched At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if messages %}
+                            {% for m in messages %}
+                            <tr>
+                                <td class="fw-bold text-danger">{{ m.holiday_date.strftime('%d-%b-%Y') }}</td>
+                                <td class="small" style="max-width: 380px;">{{ m.message }}</td>
+                                <td class="fw-semibold text-secondary">{{ m.sender_number }}</td>
+                                <td>
+                                    <span class="badge bg-primary bg-opacity-15 text-primary px-3 py-1 rounded-pill">
+                                        {{ m.total_sent }} Customers
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if m.status == 'Sent' %}
+                                        <span class="badge-custom badge-delivered"><i class="fas fa-check-circle me-1"></i>Delivered</span>
+                                    {% elif m.status == 'Partial' %}
+                                        <span class="badge-custom badge-pending"><i class="fas fa-exclamation-circle me-1"></i>Partial (Quota Limit)</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped"><i class="fas fa-times-circle me-1"></i>Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-secondary small">{{ m.created_at.strftime('%d-%b-%Y %I:%M %p') }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-secondary py-5">
+                                    <i class="fas fa-bullhorn fa-3x mb-3 text-secondary opacity-50"></i>
+                                    <p>No holiday messages sent yet. Use the "Send Holiday Message" button on the dashboard to announce holidays.</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

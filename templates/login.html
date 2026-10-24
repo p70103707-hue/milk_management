@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.65)), url('/static/images/milk_background.png') no-repeat center center fixed !important;
+        background-size: cover !important;
+    }
+    [data-theme="dark"] body {
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url('/static/images/milk_background.png') no-repeat center center fixed !important;
+        background-size: cover !important;
+    }
+</style>
+
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5">
+        <div class="glass-panel p-4 p-md-5 text-center fade-in-up">
+            <div class="mb-3">
+                <span class="fs-1">🥛</span>
+            </div>
+            <h2 class="mb-2 text-primary fw-bold" data-i18n="login_welcome">Welcome to DairyFlow</h2>
+            <p class="text-secondary mb-4" data-i18n="select_role">Select your role to sign in</p>
+            
+            <form action="{{ url_for('auth.login') }}" method="POST" id="mainLoginForm">
+                <input type="hidden" name="login_type" value="password">
+                
+                <!-- Role Selector -->
+                <div class="mb-3 text-start">
+                    <label class="form-label fw-semibold" data-i18n="select_role">Select Login Role</label>
+                    <select name="role" class="form-select form-control-custom" id="roleSelect" onchange="toggleLoginInputs()" required>
+                        <option value="admin">Admin</option>
+                        <option value="milkman">Milkman</option>
+                        <option value="customer" selected>Customer</option>
+                    </select>
+                </div>
+                
+                <!-- Admin username input -->
+                <div class="mb-3 text-start d-none" id="usernameGroup">
+                    <label class="form-label fw-semibold">Admin Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-user-shield text-secondary"></i></span>
+                        <input type="text" name="username" id="usernameInput" class="form-control form-control-custom border-start-0" placeholder="admin">
+                    </div>
+                </div>
+
+                <!-- Customer Name input (Only for Customer role) -->
+                <div class="mb-3 text-start" id="customerNameGroup">
+                    <label class="form-label fw-semibold">Registered Customer Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-user text-secondary"></i></span>
+                        <input type="text" name="customer_name" id="customerNameInput" class="form-control form-control-custom border-start-0" placeholder="e.g. Aarav Patel">
+                    </div>
+                    <small class="text-muted" style="font-size: 0.78rem;">Enter your registered full name or first name</small>
+                </div>
+
+                <!-- Mobile input (for Milkman and Customer) -->
+                <div class="mb-3 text-start" id="mobileGroup">
+                    <label class="form-label fw-semibold" id="mobileLabel">Registered Mobile Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-phone text-secondary"></i></span>
+                        <input type="text" name="mobile" id="mobileInput" class="form-control form-control-custom border-start-0" placeholder="e.g. 9876543210" required>
+                    </div>
+                </div>
+
+                <!-- Password input -->
+                <div class="mb-2 text-start">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-semibold mb-0">Password</label>
+                        <!-- Forgot password link for milkman and customer -->
+                        <a href="javascript:void(0)" onclick="openForgotPasswordModal()" id="forgotPasswordLink" class="small text-primary text-decoration-none fw-semibold">
+                            Forgot Password?
+                        </a>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-lock text-secondary"></i></span>
+                        <input type="password" name="password" id="passwordInput" class="form-control form-control-custom border-start-0 border-end-0" placeholder="••••••••">
+                        <span class="input-group-text bg-transparent border-start-0 border-card" style="cursor:pointer;" onclick="togglePassword()" id="toggleEye" title="Toggle password visibility">
+                            <i class="fas fa-eye text-secondary" id="eyeIcon"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm" data-i18n="login_btn">
+                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-4 border-top border-secondary border-opacity-25 pt-3 text-center">
+                <small class="text-secondary">Don't have an account? <a href="{{ url_for('auth.register') }}" class="text-primary font-weight-bold">Register here</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     FORGOT PASSWORD MODAL (FOR MILKMAN & CUSTOMER)
+     ============================================================ -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-0 shadow-lg p-3" style="background: var(--bg-card); border-radius: 20px;">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold text-primary mb-1" id="forgotPasswordModalLabel">
+                        <i class="fas fa-key me-2"></i>Reset Your Password
+                    </h5>
+                    <p class="text-secondary small mb-0">Enter your registered account details to create a new secure password.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form id="forgotPasswordForm" onsubmit="handleForgotPasswordSubmit(event)">
+                <div class="modal-body text-start pt-3">
+                    <div id="forgotAlert" class="alert d-none py-2 px-3 small" role="alert"></div>
+
+                    <!-- Role Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Account Role <span class="text-danger">*</span></label>
+                        <select id="forgotRoleSelect" name="role" class="form-select form-control-custom" onchange="toggleForgotRoleInputs()" required>
+                            <option value="customer">Customer</option>
+                            <option value="milkman">Milkman</option>
+                        </select>
+                    </div>
+
+                    <!-- Registered Mobile Number -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Registered Mobile Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-phone text-secondary"></i></span>
+                            <input type="text" id="forgotMobileInput" name="mobile" class="form-control form-control-custom border-start-0" placeholder="e.g. 9876543210" required>
+                        </div>
+                    </div>
+
+                    <!-- Customer Name (Optional verification for Customer) -->
+                    <div class="mb-3" id="forgotNameGroup">
+                        <label class="form-label fw-semibold small">Registered Customer Name <span class="text-secondary">(Optional)</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-user text-secondary"></i></span>
+                            <input type="text" id="forgotNameInput" name="name" class="form-control form-control-custom border-start-0" placeholder="e.g. Aarav Patel">
+                        </div>
+                    </div>
+
+                    <!-- New Password -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">New Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-lock text-secondary"></i></span>
+                            <input type="password" id="forgotNewPassword" name="new_password" class="form-control form-control-custom border-start-0" placeholder="Minimum 4 characters" minlength="4" required>
+                        </div>
+                    </div>
+
+                    <!-- Confirm New Password -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Confirm New Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0 border-card"><i class="fas fa-check-double text-secondary"></i></span>
+                            <input type="password" id="forgotConfirmPassword" name="confirm_password" class="form-control form-control-custom border-start-0" placeholder="Re-enter new password" minlength="4" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="forgotSubmitBtn" class="btn btn-primary px-4 fw-bold">
+                        <i class="fas fa-save me-1"></i> Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let forgotModalInstance = null;
+
+function toggleLoginInputs() {
+    const role = document.getElementById('roleSelect').value;
+    const usernameGroup = document.getElementById('usernameGroup');
+    const customerNameGroup = document.getElementById('customerNameGroup');
+    const mobileGroup = document.getElementById('mobileGroup');
+    const mobileLabel = document.getElementById('mobileLabel');
+    const mobileInput = document.getElementById('mobileInput');
+    const usernameInput = document.getElementById('usernameInput');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const passwordInput = document.getElementById('passwordInput');
+    
+    if (role === 'admin') {
+        usernameGroup.classList.remove('d-none');
+        customerNameGroup.classList.add('d-none');
+        mobileGroup.classList.add('d-none');
+        usernameInput.setAttribute('required', 'required');
+        mobileInput.removeAttribute('required');
+        forgotPasswordLink.classList.add('d-none');
+        passwordInput.setAttribute('required', 'required');
+    } else if (role === 'customer') {
+        usernameGroup.classList.add('d-none');
+        customerNameGroup.classList.remove('d-none');
+        mobileGroup.classList.remove('d-none');
+        usernameInput.removeAttribute('required');
+        mobileInput.setAttribute('required', 'required');
+        forgotPasswordLink.classList.remove('d-none');
+        passwordInput.removeAttribute('required');
+        
+        mobileLabel.innerText = "Registered Mobile Number";
+        mobileInput.setAttribute('placeholder', 'e.g. 9876543210');
+    } else { // milkman
+        usernameGroup.classList.add('d-none');
+        customerNameGroup.classList.add('d-none');
+        mobileGroup.classList.remove('d-none');
+        usernameInput.removeAttribute('required');
+        mobileInput.setAttribute('required', 'required');
+        forgotPasswordLink.classList.remove('d-none');
+        passwordInput.setAttribute('required', 'required');
+        
+        mobileLabel.innerText = "Milkman ID / Mobile Number";
+        mobileInput.setAttribute('placeholder', 'e.g. 1 or 9988776655');
+    }
+}
+
+function toggleForgotRoleInputs() {
+    const role = document.getElementById('forgotRoleSelect').value;
+    const nameGroup = document.getElementById('forgotNameGroup');
+    if (role === 'customer') {
+        nameGroup.classList.remove('d-none');
+    } else {
+        nameGroup.classList.add('d-none');
+    }
+}
+
+function openForgotPasswordModal() {
+    const currentRole = document.getElementById('roleSelect').value;
+    const forgotRole = document.getElementById('forgotRoleSelect');
+    if (currentRole === 'milkman') {
+        forgotRole.value = 'milkman';
+    } else {
+        forgotRole.value = 'customer';
+    }
+    toggleForgotRoleInputs();
+
+    // Pre-populate mobile if entered on login form
+    const currentMobile = document.getElementById('mobileInput').value;
+    if (currentMobile) {
+        document.getElementById('forgotMobileInput').value = currentMobile;
+    }
+    const currentName = document.getElementById('customerNameInput')?.value;
+    if (currentName) {
+        document.getElementById('forgotNameInput').value = currentName;
+    }
+
+    const modalEl = document.getElementById('forgotPasswordModal');
+    if (!forgotModalInstance) {
+        forgotModalInstance = new bootstrap.Modal(modalEl);
+    }
+    forgotModalInstance.show();
+}
+
+function togglePassword() {
+    const input = document.getElementById('passwordInput');
+    const icon  = document.getElementById('eyeIcon');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    icon.className = isHidden ? 'fas fa-eye-slash text-primary' : 'fas fa-eye text-secondary';
+    icon.style.transform = 'scale(1.2)';
+    setTimeout(() => icon.style.transform = 'scale(1)', 180);
+}
+
+function handleForgotPasswordSubmit(e) {
+    e.preventDefault();
+    const role = document.getElementById('forgotRoleSelect').value;
+    const mobile = document.getElementById('forgotMobileInput').value.trim();
+    const name = document.getElementById('forgotNameInput').value.trim();
+    const newPass = document.getElementById('forgotNewPassword').value;
+    const confirmPass = document.getElementById('forgotConfirmPassword').value;
+    const alertBox = document.getElementById('forgotAlert');
+    const submitBtn = document.getElementById('forgotSubmitBtn');
+
+    if (newPass !== confirmPass) {
+        alertBox.className = 'alert alert-danger py-2 px-3 small';
+        alertBox.innerText = 'New password and confirm password do not match.';
+        alertBox.classList.remove('d-none');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Resetting...';
+
+    fetch('/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            role: role,
+            mobile: mobile,
+            name: name,
+            new_password: newPass,
+            confirm_password: confirmPass
+        })
+    })
+    .then(res => res.json().then(data => ({ status: res.status, body: data })))
+    .then(({ status, body }) => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save me-1"></i> Update Password';
+
+        if (body.success) {
+            alertBox.className = 'alert alert-success py-2 px-3 small';
+            alertBox.innerText = body.message;
+            alertBox.classList.remove('d-none');
+
+            // Set role on login form and fill mobile
+            document.getElementById('roleSelect').value = role;
+            toggleLoginInputs();
+            document.getElementById('mobileInput').value = mobile;
+            document.getElementById('passwordInput').value = newPass;
+
+            setTimeout(() => {
+                if (forgotModalInstance) forgotModalInstance.hide();
+            }, 1800);
+        } else {
+            alertBox.className = 'alert alert-danger py-2 px-3 small';
+            alertBox.innerText = body.message || 'Password reset failed.';
+            alertBox.classList.remove('d-none');
+        }
+    })
+    .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save me-1"></i> Update Password';
+        alertBox.className = 'alert alert-danger py-2 px-3 small';
+        alertBox.innerText = 'Server error during password reset. Please try again.';
+        alertBox.classList.remove('d-none');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    toggleLoginInputs();
+    {% if show_forgot_modal %}
+    openForgotPasswordModal();
+    {% endif %}
+});
+</script>
+{% endblock %}

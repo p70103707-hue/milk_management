@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-15 text-primary px-3 py-1 rounded-pill mb-1">
+                <i class="fas fa-file-invoice me-1"></i> Customer Milk Consumption Report
+            </span>
+            <h1 class="mb-1 text-primary fw-bold">
+                {{ customer.name }}'s Milk Delivery Report
+            </h1>
+            <p class="text-secondary mb-0">
+                Detailed daily milk consumption records, daily totals, rates, and billing metrics.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            {% if payment %}
+                {% if payment.payment_status == 'Paid' %}
+                    <a href="{{ url_for('customer.download_invoice', payment_id=payment.id) }}" class="btn btn-outline-success fw-bold px-3 py-2 rounded-3">
+                        <i class="fas fa-file-pdf me-1"></i> Download PDF Invoice
+                    </a>
+                {% endif %}
+                <a href="{{ url_for('customer.payment_details', payment_id=payment.id) }}" class="btn btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm">
+                    <i class="fas fa-receipt me-1"></i> Bill & Payment Details
+                </a>
+            {% endif %}
+            <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary px-3 py-2 rounded-3">
+                <i class="fas fa-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Month & Year Selector -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-3">
+            <form action="{{ url_for('customer.report') }}" method="GET" class="row g-2 align-items-center">
+                <div class="col-auto d-flex align-items-center text-primary fw-bold">
+                    <i class="fas fa-calendar-alt me-2"></i> Select Report Period:
+                </div>
+                <div class="col-auto">
+                    <select name="month" class="form-select form-control-custom fw-semibold" onchange="this.form.submit()">
+                        {% for m_num, m_name in available_months %}
+                            <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <select name="year" class="form-select form-control-custom fw-semibold" onchange="this.form.submit()">
+                        {% for y in available_years %}
+                            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary px-3">
+                        <i class="fas fa-search me-1"></i> View
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Monthly Summary KPI Cards -->
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100">
+            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-circle d-inline-block mb-2" style="width:42px; height:42px;">
+                <i class="fas fa-wine-bottle fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Monthly Total Quantity</h6>
+            <h3 class="fw-bold text-primary mb-0">{{ total_qty }} <span style="font-size: 1rem;">L</span></h3>
+            <small class="text-muted">{{ selected_month_name }} {{ selected_year }}</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100">
+            <div class="bg-info bg-opacity-10 text-info p-2 rounded-circle d-inline-block mb-2" style="width:42px; height:42px;">
+                <i class="fas fa-calendar-check fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Total Delivery Days</h6>
+            <h3 class="fw-bold text-info mb-0">{{ total_delivery_days }} <span style="font-size: 1rem;">Days</span></h3>
+            <small class="text-muted">Delivered Days</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100">
+            <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-circle d-inline-block mb-2" style="width:42px; height:42px;">
+                <i class="fas fa-tags fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Milk Rate</h6>
+            <h3 class="fw-bold text-warning mb-0">₹{{ active_rate }}<span style="font-size: 0.9rem;">/L</span></h3>
+            <small class="text-muted">Per Liter Rate</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3 mb-3">
+        <div class="glass-panel p-3 text-center h-100" style="border: 2px solid rgba(16, 185, 129, 0.3);">
+            <div class="bg-success bg-opacity-10 text-success p-2 rounded-circle d-inline-block mb-2" style="width:42px; height:42px;">
+                <i class="fas fa-rupee-sign fa-lg mt-1"></i>
+            </div>
+            <h6 class="text-secondary small mb-1">Monthly Total Amount</h6>
+            <h3 class="fw-bold text-success mb-0">₹{{ "%.2f"|format(total_amount) }}</h3>
+            <span class="badge {% if payment_status == 'Paid' %}bg-success{% elif payment_status == 'Pending' %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill mt-1">
+                Status: {{ payment_status }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Daily Milk Consumption Table (One row per calendar day) -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h4 class="text-primary fw-bold mb-0">
+                    <i class="fas fa-table me-2"></i>Daily Consumption Breakdown for {{ selected_month_name }} {{ selected_year }}
+                </h4>
+                <div class="text-muted small">
+                    <i class="fas fa-info-circle text-primary me-1"></i>Multiple deliveries on the same calendar day are combined into a single calendar day total.
+                </div>
+            </div>
+
+            <div class="table-responsive rounded-3">
+                <table class="table table-custom align-middle mb-0" id="reportTable">
+                    <thead>
+                        <tr class="text-secondary" style="border-bottom: 2px solid var(--border-card);">
+                            <th class="ps-3" style="min-width: 90px;">Delivery Date</th>
+                            <th style="min-width: 110px;">Day</th>
+                            <th style="min-width: 140px;">Daily Total Quantity</th>
+                            <th style="min-width: 110px;">Milk Rate</th>
+                            <th style="min-width: 130px;">Daily Amount</th>
+                            <th class="text-center" style="min-width: 140px;">Delivery Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if calendar_data %}
+                            {% for c in calendar_data %}
+                            <tr class="{% if c.status == 'Delivered' %}table-row-delivered{% else %}table-row-nomilk{% endif %}">
+                                <td class="ps-3 fw-bold text-primary">
+                                    {{ c.date.strftime('%d-%b-%Y') }}
+                                </td>
+                                <td class="text-secondary">
+                                    {{ c.day_name }}
+                                </td>
+                                <td>
+                                    {% if c.status == 'Delivered' %}
+                                        <span class="fw-bold text-primary">{{ c.quantity }} L</span>
+                                        {% if c.delivery_count > 1 %}
+                                            <span class="badge bg-primary bg-opacity-15 text-primary rounded-pill small ms-1" title="Combined from multiple deliveries">
+                                                {{ c.delivery_count }} deliveries
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-secondary">₹{{ c.rate }}</span>
+                                </td>
+                                <td>
+                                    {% if c.status == 'Delivered' %}
+                                        <strong class="text-success">₹{{ "%.2f"|format(c.amount) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">₹0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if c.status == 'Delivered' %}
+                                        <span class="badge-custom badge-delivered d-inline-flex align-items-center gap-1">
+                                            <i class="fas fa-check-circle"></i> Delivered
+                                        </span>
+                                    {% elif c.status == 'Skipped' %}
+                                        <span class="badge-custom badge-skipped d-inline-flex align-items-center gap-1">
+                                            <i class="fas fa-ban"></i> Skipped
+                                        </span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped d-inline-flex align-items-center gap-1" style="background-color: rgba(108, 117, 125, 0.15); color: var(--text-secondary);">
+                                            <i class="fas fa-times-circle"></i> Not Delivered
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-secondary py-4">No records found for this period.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                    <!-- Footer with Totals -->
+                    <tfoot>
+                        <tr class="glass-panel" style="background: var(--bg-card); font-size: 1.05rem; border-top: 2px solid var(--primary);">
+                            <th class="ps-3 fw-bold text-primary" colspan="2">
+                                <i class="fas fa-calculator me-1"></i> Monthly Total Summary:
+                            </th>
+                            <th class="fw-bold text-primary">
+                                {{ total_qty }} L
+                            </th>
+                            <th class="fw-bold text-warning">
+                                ₹{{ active_rate }}/L
+                            </th>
+                            <th class="fw-bold text-success" style="font-size: 1.15rem;">
+                                ₹{{ "%.2f"|format(total_amount) }}
+                            </th>
+                            <th class="text-center">
+                                <span class="badge {% if payment_status == 'Paid' %}bg-success{% else %}bg-warning text-dark{% endif %} px-3 py-1 rounded-pill">
+                                    Payment: {{ payment_status }}
+                                </span>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

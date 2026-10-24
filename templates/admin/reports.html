@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <h1 data-i18n="nav_reports">Reports</h1>
+        <p class="text-secondary">Extract daily, weekly, or monthly delivery analytics and transaction details.</p>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-4">
+            <form action="{{ url_for('admin.reports') }}" method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label" data-i18n="report_type">Report Type</label>
+                    <select name="type" class="form-select form-control-custom" id="reportTypeSelect" onchange="toggleReportFilters()" required>
+                        <option value="daily" {% if report_type == 'daily' %}selected{% endif %}>Daily Report</option>
+                        <option value="weekly" {% if report_type == 'weekly' %}selected{% endif %}>Weekly Report</option>
+                        <option value="monthly" {% if report_type == 'monthly' %}selected{% endif %}>Monthly Report</option>
+                        <option value="customer" {% if report_type == 'customer' %}selected{% endif %}>Customer Report</option>
+                        <option value="society" {% if report_type == 'society' %}selected{% endif %}>Society Report</option>
+                    </select>
+                </div>
+                
+                <!-- Daily Date Picker -->
+                <div class="col-md-3 filter-group" id="dailyFilter">
+                    <label class="form-label" data-i18n="delivery_date">Date</label>
+                    <input type="date" name="date" class="form-control form-control-custom" value="{{ request.args.get('date', today) }}">
+                </div>
+
+                <!-- Monthly Month Picker -->
+                <div class="col-md-3 filter-group d-none" id="monthlyFilter">
+                    <label class="form-label">Month</label>
+                    <input type="month" name="month" class="form-control form-control-custom" value="{{ request.args.get('month', today[:7]) }}">
+                </div>
+
+                <!-- Customer Dropdown -->
+                <div class="col-md-3 filter-group d-none" id="customerFilter">
+                    <label class="form-label" data-i18n="customer_name">Customer</label>
+                    <select name="customer_id" class="form-select form-control-custom">
+                        <option value="">-- Select Customer --</option>
+                        {% for c in customers %}
+                            <option value="{{ c.id }}" {% if request.args.get('customer_id') == c.id | string %}selected{% endif %}>{{ c.name }} ({{ c.mobile }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Society Dropdown -->
+                <div class="col-md-3 filter-group d-none" id="societyFilter">
+                    <label class="form-label" data-i18n="select_society">Society</label>
+                    <select name="society_id" class="form-select form-control-custom">
+                        <option value="">-- Select Society --</option>
+                        {% for s in societies %}
+                            <option value="{{ s.id }}" {% if request.args.get('society_id') == s.id | string %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100 py-2"><i class="fas fa-search me-2"></i><span data-i18n="generate_report">View Report</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Output -->
+    <div class="col-12">
+        <div class="glass-panel p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                <h4 class="text-primary mb-2 mb-sm-0 fw-bold">{{ title }}</h4>
+                <div class="d-flex gap-3">
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-3">
+                        Total Volume: <b>{{ total_qty }} L</b>
+                    </span>
+                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-3">
+                        Total Cost: <b>₹{{ total_amount }}</b>
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th data-i18n="delivery_date">Date</th>
+                            <th data-i18n="customer_name">Customer</th>
+                            <th data-i18n="nav_societies">Society</th>
+                            <th data-i18n="milkman_name">Milkman</th>
+                            <th data-i18n="quantity">Quantity</th>
+                            <th data-i18n="rate">Rate</th>
+                            <th data-i18n="amount">Amount</th>
+                            <th data-i18n="status">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if deliveries %}
+                            {% for d in deliveries %}
+                            <tr>
+                                <td>{{ d.date.strftime('%d-%b-%Y') }}</td>
+                                <td class="fw-bold">{{ d.customer.name }}</td>
+                                <td><span class="badge bg-secondary rounded-pill px-3 py-1">{{ d.customer.society.name }}</span></td>
+                                <td>{{ d.milkman.name }}</td>
+                                <td>{{ d.quantity }} L</td>
+                                <td>₹{{ d.rate }}/L</td>
+                                <td class="fw-bold text-primary">₹{{ d.total_amount }}</td>
+                                <td>
+                                    {% if d.status == 'Delivered' %}
+                                        <span class="badge-custom badge-delivered">Delivered</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-skipped">Skipped</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center text-secondary py-4">No records match the filter query.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleReportFilters() {
+    const reportType = document.getElementById('reportTypeSelect').value;
+    
+    // Hide all filters
+    document.querySelectorAll('.filter-group').forEach(group => {
+        group.classList.add('d-none');
+        group.querySelector('input, select').removeAttribute('required');
+    });
+
+    if (reportType === 'daily') {
+        const f = document.getElementById('dailyFilter');
+        f.classList.remove('d-none');
+        f.querySelector('input').setAttribute('required', 'required');
+    } else if (reportType === 'monthly') {
+        const f = document.getElementById('monthlyFilter');
+        f.classList.remove('d-none');
+        f.querySelector('input').setAttribute('required', 'required');
+    } else if (reportType === 'customer') {
+        const f = document.getElementById('customerFilter');
+        f.classList.remove('d-none');
+        f.querySelector('select').setAttribute('required', 'required');
+    } else if (reportType === 'society') {
+        const f = document.getElementById('societyFilter');
+        f.classList.remove('d-none');
+        f.querySelector('select').setAttribute('required', 'required');
+    }
+}
+
+// Call on startup
+document.addEventListener('DOMContentLoaded', () => {
+    toggleReportFilters();
+});
+</script>
+{% endblock %}

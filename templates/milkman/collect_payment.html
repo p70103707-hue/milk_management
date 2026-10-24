@@ -1,0 +1,594 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+/* ─── Premium Payment Collection Styles ─── */
+.pay-hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.pay-hero::before {
+    content: '₹';
+    position: absolute;
+    right: -20px;
+    top: -30px;
+    font-size: 12rem;
+    font-weight: 900;
+    color: rgba(255,255,255,0.04);
+    line-height: 1;
+    pointer-events: none;
+}
+.pay-hero h1 { color: #fff; font-weight: 800; }
+.pay-hero p  { color: rgba(255,255,255,0.65); }
+
+.customer-card {
+    background: var(--bg-card, #1e293b);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+.customer-card:hover {
+    border-color: #0d6efd;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(13,110,253,0.2);
+}
+.customer-card.selected-card {
+    border-color: #0d6efd;
+    background: linear-gradient(135deg, rgba(13,110,253,0.15), rgba(13,110,253,0.05));
+    box-shadow: 0 0 0 2px #0d6efd40;
+}
+.pending-pill {
+    background: linear-gradient(135deg, #ff6b35, #e63946);
+    color: #fff;
+    border-radius: 50px;
+    padding: 2px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+.total-pending {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #f0c040;
+}
+
+/* ─── Gateway Selection Buttons ─── */
+.gw-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gw-radio { display: none; }
+.gw-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 10px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    background: rgba(255,255,255,0.03);
+    position: relative;
+    overflow: hidden;
+}
+.gw-label:hover { border-color: rgba(255,255,255,0.3); transform: translateY(-2px); }
+.gw-radio:checked + .gw-label {
+    border-color: var(--gw-color, #0d6efd);
+    background: linear-gradient(135deg, var(--gw-bg-start, rgba(13,110,253,0.2)), var(--gw-bg-end, rgba(13,110,253,0.05)));
+    box-shadow: 0 0 0 3px var(--gw-glow, rgba(13,110,253,0.3));
+}
+.gw-label .gw-icon { font-size: 2.2rem; line-height: 1; }
+.gw-label .gw-name { font-weight: 700; font-size: 0.85rem; }
+.gw-label .gw-sub  { font-size: 0.68rem; color: rgba(255,255,255,0.5); }
+
+/* ─── QR Panel ─── */
+.qr-box {
+    border: 3px dashed #198754;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(25, 135, 84, 0.06);
+    animation: pulse-border 2s infinite;
+}
+@keyframes pulse-border {
+    0%,100% { border-color: #198754; }
+    50%      { border-color: #20c997; }
+}
+.qr-visual {
+    width: 140px; height: 140px;
+    border: 3px solid #198754;
+    border-radius: 12px;
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3.5rem;
+    margin: 0 auto 12px;
+    box-shadow: 0 4px 20px rgba(25,135,84,0.3);
+}
+.upi-id-badge {
+    background: #198754;
+    color: white;
+    border-radius: 8px;
+    padding: 4px 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    display: inline-block;
+    margin-top: 6px;
+}
+
+/* ─── Slide detail panel ─── */
+.detail-panel {
+    border-radius: 14px;
+    padding: 1.25rem;
+    text-align: center;
+    animation: slideDown 0.3s ease;
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Bill list item ─── */
+.bill-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.bill-item:hover   { border-color: #0d6efd; background: rgba(13,110,253,0.08); }
+.bill-item.selected-bill {
+    border-color: #0d6efd;
+    background: rgba(13,110,253,0.15);
+    box-shadow: 0 0 0 2px rgba(13,110,253,0.3);
+}
+.bill-month { font-weight: 700; font-size: 0.95rem; }
+.bill-amount { font-size: 1.1rem; font-weight: 800; color: #f0c040; }
+
+/* ─── Pay button ─── */
+.btn-pay-now {
+    background: linear-gradient(135deg, #0d6efd, #6610f2);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 28px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    width: 100%;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 4px 20px rgba(13,110,253,0.4);
+}
+.btn-pay-now:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(13,110,253,0.5);
+}
+.btn-pay-now:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Success animation ─── */
+.success-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 9999;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+}
+.success-overlay.show { display: flex; animation: fadeIn 0.3s ease; }
+.success-circle {
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #198754, #20c997);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+    animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 0 60px rgba(32,201,151,0.5);
+}
+@keyframes popIn {
+    from { transform: scale(0); }
+    to   { transform: scale(1); }
+}
+@keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+
+/* ─── Empty state ─── */
+.empty-state { text-align: center; padding: 4rem 2rem; }
+.empty-icon {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+    display: block;
+    animation: bounce 2s infinite;
+}
+@keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+}
+</style>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+    <div class="success-circle mb-3">✅</div>
+    <h3 class="text-white fw-bold mb-1" id="successTitle">Payment Collected!</h3>
+    <p class="text-white-50" id="successSub">Transaction recorded successfully.</p>
+    <small class="text-muted" id="successTxn"></small>
+    <button class="btn btn-outline-light mt-4" onclick="document.getElementById('successOverlay').classList.remove('show')">
+        <i class="fas fa-times me-2"></i>Close
+    </button>
+</div>
+
+<div class="row fade-in-up" id="mainContent">
+    <!-- Hero Banner -->
+    <div class="col-12">
+        <div class="pay-hero">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h1 class="mb-1"><i class="fas fa-hand-holding-usd me-3"></i>Collect Payment</h1>
+                    <p class="mb-0">Customer પાસેથી payment collect કરો — Razorpay, PhonePe, Google Pay અથવા QR Code</p>
+                </div>
+                <a href="{{ url_for('milkman.dashboard') }}" class="btn btn-outline-light px-4 py-2">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+            </div>
+            <div class="row g-3 mt-3">
+                <div class="col-auto">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size:1.8rem">📊</span>
+                        <div>
+                            <div class="text-white-50 small">Pending Customers</div>
+                            <div class="text-white fw-bold fs-5">{{ customer_list|length }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size:1.8rem">💰</span>
+                        <div>
+                            <div class="text-white-50 small">Total Pending</div>
+                            <div class="text-warning fw-bold fs-5">
+                                {% set ns = namespace(total=0) %}
+                                {% for item in customer_list %}
+                                    {% for bill in item.bills %}
+                                        {% set ns.total = ns.total + bill.amount %}
+                                    {% endfor %}
+                                {% endfor %}
+                                ₹{{ "%.2f"|format(ns.total) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if customer_list %}
+
+    <!-- LEFT: Customer List -->
+    <div class="col-lg-5 mb-4">
+        <div class="glass-panel p-4 h-100">
+            <h5 class="text-primary mb-3"><i class="fas fa-users me-2"></i>Pending Customers</h5>
+            <input type="text" id="customerSearch" class="form-control form-control-custom mb-3" 
+                   placeholder="🔍  Customer શોધો..." oninput="filterCustomers(this.value)">
+            <div id="customerListContainer" style="max-height:520px; overflow-y:auto;">
+                {% for item in customer_list %}
+                {% set total = item.bills | sum(attribute='amount') %}
+                <div class="customer-card mb-2"
+                     id="cust-card-{{ item.customer.id }}"
+                     onclick="selectCustomer({{ item.customer.id }}, '{{ item.customer.name }}', '{{ item.customer.mobile }}')">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-bold text-white">{{ item.customer.name }}</div>
+                            <div class="text-muted small mt-1">
+                                <i class="fas fa-phone me-1"></i>{{ item.customer.mobile }}
+                                &nbsp;|&nbsp;<i class="fas fa-building me-1"></i>{{ item.customer.society.name if item.customer.society else 'N/A' }}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="total-pending">₹{{ "%.0f"|format(total) }}</div>
+                            <span class="pending-pill">{{ item.bills|length }} bill{{ 's' if item.bills|length > 1 }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Payment Panel -->
+    <div class="col-lg-7 mb-4">
+        <!-- Placeholder when no customer selected -->
+        <div class="glass-panel p-5 text-center h-100" id="selectPromptPanel">
+            <span style="font-size:5rem; display:block; margin-bottom:1.5rem; animation:bounce 2s infinite;">👈</span>
+            <h5 class="text-secondary">ડાબી બાજુ customer select કરો</h5>
+            <p class="text-muted small">Payment collect કરવા માટે customer ની card ક્લિક કરો.</p>
+        </div>
+
+        <!-- Payment Panel (hidden until customer selected) -->
+        <div class="glass-panel p-4 d-none" id="paymentPanel">
+            <!-- Customer info header -->
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="bg-primary bg-opacity-20 rounded-circle p-3 d-inline-flex">
+                    <i class="fas fa-user fa-lg text-primary"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 fw-bold" id="panelCustName">-</h5>
+                    <small class="text-muted" id="panelCustMobile">-</small>
+                </div>
+            </div>
+
+            <!-- Bill Selection -->
+            <label class="form-label fw-bold mb-2"><i class="fas fa-file-invoice me-2 text-warning"></i>Bill Select કરો</label>
+            <div id="billListContainer" class="mb-4">
+                <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>
+            </div>
+
+            <!-- Amount Display -->
+            <div class="rounded-3 p-3 mb-4 text-center" style="background:linear-gradient(135deg,rgba(13,110,253,0.15),rgba(13,110,253,0.05));border:1px solid rgba(13,110,253,0.3);" id="amountBanner">
+                <small class="text-muted d-block">Amount to Collect</small>
+                <h2 class="text-primary fw-bold mb-0" id="selectedAmount">₹0.00</h2>
+                <small class="text-success"><i class="fas fa-shield-alt me-1"></i>Secure Collection</small>
+            </div>
+
+            <!-- Payment Method Selection -->
+            <label class="form-label fw-bold mb-3"><i class="fas fa-credit-card me-2 text-primary"></i>Payment Method</label>
+            <div class="gw-btn-group mb-4">
+                
+                <!-- Razorpay -->
+                <input type="radio" class="gw-radio" name="payMethod" id="gw-razorpay" value="Razorpay" checked>
+                <label class="gw-label" for="gw-razorpay" onclick="showDetail('razorpay')"
+                       style="--gw-color:#528FF0;--gw-bg-start:rgba(82,143,240,0.2);--gw-bg-end:rgba(82,143,240,0.05);--gw-glow:rgba(82,143,240,0.3);">
+                    <span class="gw-icon">💳</span>
+                    <span class="gw-name">Razorpay</span>
+                    <span class="gw-sub">Card • Net Banking • UPI</span>
+                </label>
+
+                <!-- PhonePe -->
+                <input type="radio" class="gw-radio" name="payMethod" id="gw-phonepe" value="PhonePe">
+                <label class="gw-label" for="gw-phonepe" onclick="showDetail('phonepe')"
+                       style="--gw-color:#5f259f;--gw-bg-start:rgba(95,37,159,0.25);--gw-bg-end:rgba(95,37,159,0.05);--gw-glow:rgba(95,37,159,0.35);">
+                    <span class="gw-icon">📱</span>
+                    <span class="gw-name" style="color:#a855f7;">PhonePe</span>
+                    <span class="gw-sub">UPI • Wallet</span>
+                </label>
+
+                <!-- Google Pay -->
+                <input type="radio" class="gw-radio" name="payMethod" id="gw-gpay" value="Google Pay">
+                <label class="gw-label" for="gw-gpay" onclick="showDetail('gpay')"
+                       style="--gw-color:#1a73e8;--gw-bg-start:rgba(26,115,232,0.2);--gw-bg-end:rgba(26,115,232,0.05);--gw-glow:rgba(26,115,232,0.3);">
+                    <span class="gw-icon">🇬</span>
+                    <span class="gw-name" style="color:#1a73e8;">Google Pay</span>
+                    <span class="gw-sub">UPI Payment</span>
+                </label>
+
+                <!-- UPI QR -->
+                <input type="radio" class="gw-radio" name="payMethod" id="gw-upi" value="UPI QR">
+                <label class="gw-label" for="gw-upi" onclick="showDetail('upi')"
+                       style="--gw-color:#198754;--gw-bg-start:rgba(25,135,84,0.2);--gw-bg-end:rgba(25,135,84,0.05);--gw-glow:rgba(25,135,84,0.3);">
+                    <span class="gw-icon">📷</span>
+                    <span class="gw-name" style="color:#20c997;">UPI QR Code</span>
+                    <span class="gw-sub">Scan & Pay</span>
+                </label>
+            </div>
+
+            <!-- Gateway Detail Panels -->
+            <div id="detail-razorpay" class="detail-panel mb-4" style="background:rgba(82,143,240,0.08);border:1px solid rgba(82,143,240,0.25);">
+                <i class="fas fa-credit-card fa-2x mb-2" style="color:#528FF0;"></i>
+                <p class="mb-1 fw-bold text-white">Razorpay Gateway</p>
+                <small class="text-muted">Supports Credit/Debit Card, Net Banking, UPI, Paytm, Wallets</small>
+            </div>
+
+            <div id="detail-phonepe" class="detail-panel mb-4 d-none" style="background:rgba(95,37,159,0.1);border:1px solid rgba(95,37,159,0.3);">
+                <span style="font-size:2.5rem;">📱</span>
+                <p class="mb-1 fw-bold" style="color:#a855f7;">PhonePe Payment</p>
+                <small class="text-muted">
+                    PhonePe app ખોલો → <strong>Transfer to UPI</strong><br>
+                    UPI ID: <span class="badge" style="background:#5f259f;">dairyflow@ybl</span>
+                </small>
+            </div>
+
+            <div id="detail-gpay" class="detail-panel mb-4 d-none" style="background:rgba(26,115,232,0.1);border:1px solid rgba(26,115,232,0.3);">
+                <span style="font-size:2.5rem;">🇬</span>
+                <p class="mb-1 fw-bold" style="color:#1a73e8;">Google Pay</p>
+                <small class="text-muted">
+                    Google Pay app ખોલો → <strong>Pay to UPI</strong><br>
+                    UPI ID: <span class="badge" style="background:#1a73e8;">dairyflow@okicici</span>
+                </small>
+            </div>
+
+            <div id="detail-upi" class="detail-panel mb-4 d-none" style="background:rgba(25,135,84,0.07);border:1px dashed rgba(25,135,84,0.5);">
+                <div class="qr-box">
+                    <p class="fw-bold text-success mb-3"><i class="fas fa-qrcode me-2"></i>Scan QR Code to Pay</p>
+                    <div class="qr-visual mx-auto">🔳</div>
+                    <div class="upi-id-badge">dairyflow@upi</div>
+                    <p class="text-muted small mt-2 mb-0">Any UPI app વડે scan કરો (PhonePe, GPay, BHIM)</p>
+                </div>
+            </div>
+
+            <!-- Confirm Button -->
+            <button class="btn-pay-now" id="confirmPayBtn" onclick="confirmPayment()" disabled>
+                <i class="fas fa-lock me-2"></i>Confirm Payment Collection
+            </button>
+            <p class="text-center text-muted small mt-2">Bill select કર્યા પછી payment confirm કરો</p>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Empty state: No pending customers -->
+    <div class="col-12">
+        <div class="glass-panel p-5">
+            <div class="empty-state">
+                <span class="empty-icon">🎉</span>
+                <h4 class="text-success fw-bold">બધા bills clear છે!</h4>
+                <p class="text-muted">Currently કોઈ customer ના pending payments નથી.</p>
+                <a href="{{ url_for('milkman.dashboard') }}" class="btn btn-primary px-5 mt-2">
+                    <i class="fas fa-home me-2"></i>Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── State ── */
+let selectedCustomerId = null;
+let selectedBillId     = null;
+let selectedBillAmount = 0;
+
+/* ── Select Customer ── */
+function selectCustomer(custId, custName, custMobile) {
+    // Highlight card
+    document.querySelectorAll('.customer-card').forEach(c => c.classList.remove('selected-card'));
+    document.getElementById(`cust-card-${custId}`).classList.add('selected-card');
+
+    selectedCustomerId = custId;
+    selectedBillId     = null;
+    selectedBillAmount = 0;
+
+    document.getElementById('panelCustName').textContent   = custName;
+    document.getElementById('panelCustMobile').textContent = '📞 ' + custMobile;
+    document.getElementById('selectedAmount').textContent  = '₹0.00';
+    document.getElementById('confirmPayBtn').disabled      = true;
+
+    // Show panel
+    document.getElementById('selectPromptPanel').classList.add('d-none');
+    document.getElementById('paymentPanel').classList.remove('d-none');
+
+    // Load bills via AJAX
+    const container = document.getElementById('billListContainer');
+    container.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>';
+
+    fetch(`/milkman/customer_bills/${custId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.bills || data.bills.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted py-3">No pending bills</p>';
+                return;
+            }
+            let html = '';
+            data.bills.forEach(bill => {
+                html += `
+                    <div class="bill-item mb-2" id="bill-${bill.id}"
+                         onclick="selectBill(${bill.id}, ${bill.amount})">
+                        <div>
+                            <div class="bill-month">📅 ${bill.billing_month}</div>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                        <div class="bill-amount">₹${bill.amount.toFixed(2)}</div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+        })
+        .catch(() => {
+            container.innerHTML = '<p class="text-danger text-center">Error loading bills</p>';
+        });
+}
+
+/* ── Select Bill ── */
+function selectBill(billId, amount) {
+    document.querySelectorAll('.bill-item').forEach(b => b.classList.remove('selected-bill'));
+    document.getElementById(`bill-${billId}`).classList.add('selected-bill');
+
+    selectedBillId     = billId;
+    selectedBillAmount = amount;
+
+    document.getElementById('selectedAmount').textContent = `₹${amount.toFixed(2)}`;
+    document.getElementById('confirmPayBtn').disabled = false;
+}
+
+/* ── Gateway Detail ── */
+function showDetail(gw) {
+    ['razorpay','phonepe','gpay','upi'].forEach(id => {
+        const el = document.getElementById(`detail-${id}`);
+        if (el) el.classList.toggle('d-none', id !== gw);
+    });
+}
+
+/* ── Filter Customers ── */
+function filterCustomers(q) {
+    const lower = q.toLowerCase();
+    document.querySelectorAll('.customer-card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(lower) ? '' : 'none';
+    });
+}
+
+/* ── Confirm Payment ── */
+function confirmPayment() {
+    if (!selectedBillId || !selectedCustomerId) {
+        showToast('Bill select કરો!', 'warning');
+        return;
+    }
+
+    const selected = document.querySelector('input[name="payMethod"]:checked');
+    const method   = selected ? selected.value : 'Razorpay';
+
+    // Disable button + show spinner
+    const btn = document.getElementById('confirmPayBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+
+    fetch('/milkman/collect_payment_submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_id: selectedBillId, payment_method: method })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.innerHTML = '<i class="fas fa-lock me-2"></i>Confirm Payment Collection';
+
+        if (data.success) {
+            // Show success overlay
+            document.getElementById('successTitle').textContent = `₹${data.amount.toFixed(2)} Collected!`;
+            document.getElementById('successSub').textContent   = `${data.billing_month} bill — ${method} via`;
+            document.getElementById('successTxn').textContent  = `TXN: ${data.transaction_id}`;
+            document.getElementById('successOverlay').classList.add('show');
+
+            // Remove bill item from DOM
+            const billEl = document.getElementById(`bill-${selectedBillId}`);
+            if (billEl) {
+                billEl.style.opacity = '0';
+                setTimeout(() => billEl.remove(), 400);
+            }
+
+            // Update pending amount on customer card
+            const card = document.getElementById(`cust-card-${selectedCustomerId}`);
+            if (card) {
+                // Reload page after short delay to refresh data
+                setTimeout(() => window.location.reload(), 2800);
+            }
+
+            selectedBillId     = null;
+            selectedBillAmount = 0;
+            document.getElementById('selectedAmount').textContent = '₹0.00';
+            document.getElementById('confirmPayBtn').disabled = true;
+
+        } else {
+            btn.disabled = false;
+            showToast(data.message || 'Error occurred!', 'danger');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-lock me-2"></i>Confirm Payment Collection';
+        showToast('Network error. Please try again.', 'danger');
+    });
+}
+
+// On page load show first gateway detail by default
+document.addEventListener('DOMContentLoaded', () => showDetail('razorpay'));
+</script>
+{% endblock %}

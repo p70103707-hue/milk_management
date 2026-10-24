@@ -1,0 +1,800 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row fade-in-up">
+    <!-- Header -->
+    <div class="col-12 mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="mb-1" data-i18n="nav_delivery"><i class="fas fa-truck text-primary me-2"></i>Milk Delivery Logs</h1>
+                <p class="text-secondary mb-0">Select society and enter customer's daily milk quantity in Liter & Milliliter.</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Delivery Date Selector -->
+                <div class="glass-panel px-3 py-2 d-flex align-items-center gap-2">
+                    <label class="fw-bold text-primary small mb-0"><i class="fas fa-calendar-day me-1"></i>Delivery Date:</label>
+                    <input type="date" id="headerDeliveryDatePicker" class="form-control form-control-sm form-control-custom fw-bold text-primary" 
+                           style="width: 150px;" value="{{ selected_date.strftime('%Y-%m-%d') }}" onchange="changeDeliveryDate(this.value)">
+                </div>
+                <a href="{{ url_for('milkman.customers') }}" class="btn btn-outline-primary fw-bold px-3 py-2 rounded-3">
+                    <i class="fas fa-users me-1"></i> Customers
+                </a>
+                <a href="{{ url_for('milkman.collect_payment') }}" class="btn fw-bold px-3 py-2 text-white shadow-sm"
+                   style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px;">
+                    💰 Collect Payment
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Societies Tab Selector -->
+    <div class="col-12 mb-4">
+        <div class="glass-panel p-3">
+            <ul class="nav nav-pills" id="societyTab" role="tablist">
+                {% for s in data %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if loop.first %}active{% endif %} me-2 mb-2 px-3 py-2 fw-semibold" id="tab-{{ s.society_id }}"
+                        data-bs-toggle="pill" data-bs-target="#soc-content-{{ s.society_id }}" type="button" role="tab"
+                        style="border-radius: 12px;">
+                        <i class="fas fa-building me-2"></i>{{ s.society_name }}
+                        <span class="badge bg-primary bg-opacity-25 text-primary ms-1">{{ s.customers|length }}</span>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Society content cards -->
+    <div class="col-12">
+        <div class="tab-content" id="societyTabContent">
+            {% for s in data %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="soc-content-{{ s.society_id }}" role="tabpanel">
+                
+                <!-- Quick Summary Bar for Society -->
+                <div class="glass-panel p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold fs-5 text-primary"><i class="fas fa-map-marker-alt me-2"></i>{{ s.society_name }}</span>
+                    </div>
+                    <div class="small text-secondary">
+                        Tap on any customer to select daily milk quantity (L / ML)
+                    </div>
+                </div>
+
+                <!-- Customer Delivery Cards (Touch-Optimized for Smartphones & Desktops) -->
+                <div class="row g-3">
+                    {% for c in s.customers %}
+                    <div class="col-12 col-md-6 col-lg-4" id="cust-card-col-{{ c.id }}">
+                        <div class="customer-delivery-card h-100 d-flex flex-column justify-content-between {% if c.delivered %}{% if c.status == 'Delivered' %}status-delivered{% else %}status-skipped{% endif %}{% else %}status-pending{% endif %}"
+                             id="cust-card-{{ c.id }}"
+                             data-customer-id="{{ c.id }}"
+                             data-customer-name="{{ c.name }}"
+                             data-customer-address="{{ c.address }}"
+                             data-society-name="{{ s.society_name }}"
+                             data-default-qty="{{ c.default_qty }}"
+                             data-default-qty-ml="{{ c.default_qty_ml }}"
+                             data-current-qty-ml="{{ c.qty_ml }}"
+                             data-delivered="{{ 'true' if c.delivered else 'false' }}"
+                             data-status="{{ c.status if c.status else 'Pending' }}">
+                            
+                            <!-- Card Header: Customer Info -->
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h5 class="fw-bold mb-1 text-primary">{{ c.name }}</h5>
+                                        <div class="text-secondary small">
+                                            <i class="fas fa-home me-1 text-info"></i>{{ c.address }}
+                                        </div>
+                                    </div>
+                                    <div id="status-badge-{{ c.id }}">
+                                        {% if c.delivered %}
+                                            {% if c.status == 'Delivered' %}
+                                                <span class="badge-custom badge-delivered">
+                                                    <i class="fas fa-check-circle me-1"></i>{{ c.qty_ml }} ml ({{ c.qty }} L)
+                                                    {% if c.delivery_count > 1 %}<span class="badge bg-white text-dark ms-1" style="font-size:0.75rem;">{{ c.delivery_count }} deliveries</span>{% endif %}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge-custom badge-skipped"><i class="fas fa-ban me-1"></i>Skipped</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge-custom badge-pending"><i class="fas fa-clock me-1"></i>Pending</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Default quantity chip -->
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <span class="badge bg-light bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1 rounded-pill small">
+                                        <i class="fas fa-calendar-check me-1"></i>Default: <strong>{{ c.default_qty_ml }} ml</strong> ({{ c.default_qty }} L)
+                                    </span>
+                                    <span class="text-secondary small font-monospace"><i class="fas fa-phone me-1"></i>{{ c.mobile }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Card Actions -->
+                            <div class="pt-2 border-top border-secondary border-opacity-10">
+                                <div class="row g-2">
+                                    <div class="col-8">
+                                        <button type="button" 
+                                                class="btn btn-primary w-100 btn-open-qty-modal d-flex align-items-center justify-content-center gap-2"
+                                                id="btn-select-qty-{{ c.id }}"
+                                                onclick="openMilkQuantityModal({{ c.id }})">
+                                            <i class="fas fa-wine-bottle"></i>
+                                            <span id="btn-label-{{ c.id }}">
+                                                {% if c.delivered and c.status == 'Delivered' %}
+                                                    Change Qty ({{ c.qty_ml }} ml)
+                                                {% else %}
+                                                    Select Milk Qty
+                                                {% endif %}
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" 
+                                                class="btn btn-outline-danger w-100 btn-open-qty-modal d-flex align-items-center justify-content-center gap-1"
+                                                title="Mark as skipped"
+                                                onclick="quickSkipCustomer({{ c.id }})">
+                                            <i class="fas fa-ban"></i>
+                                            <span>Skip</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MOBILE-FRIENDLY MILK QUANTITY SELECTION MODAL
+     ============================================================ -->
+<div class="modal fade" id="milkQuantityModal" tabindex="-1" aria-labelledby="milkQuantityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+        <div class="modal-content glass-panel border-0 shadow-2xl" style="background: var(--bg-card); border-radius: 24px; overflow: hidden;">
+            
+            <!-- Modal Header -->
+            <div class="modal-header border-0 pb-1 pt-4 px-4">
+                <div>
+                    <h4 class="modal-title fw-bold text-primary mb-1" id="milkQuantityModalLabel">
+                        <i class="fas fa-wine-bottle me-2 text-primary"></i>Daily Milk Quantity
+                    </h4>
+                    <p class="text-secondary small mb-0" id="modal-customer-info">Customer Details</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body px-4 py-3">
+
+                <!-- 0. DELIVERY DATE SELECTION -->
+                <div class="mb-3 p-3 rounded-3" style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15);">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold text-primary small mb-0">
+                            <i class="fas fa-calendar-alt me-1"></i>Milk Delivery Date <span class="text-danger">*</span>
+                        </label>
+                        <span class="text-muted small" style="font-size: 0.75rem;">Can be past or current date</span>
+                    </div>
+                    <input type="date" id="modalDeliveryDate" class="form-control form-control-custom fw-bold text-primary" 
+                           value="{{ selected_date.strftime('%Y-%m-%d') }}">
+                    <div id="modalExistingDeliveriesNotice" class="alert alert-info py-2 px-3 small mt-2 mb-0 d-none"></div>
+                </div>
+
+                <!-- 1. LIVE QUANTITY DISPLAY BANNER -->
+                <div class="selected-qty-banner p-3 text-center mb-3">
+                    <div class="small text-uppercase tracking-wider fw-bold text-secondary mb-1">
+                        <i class="fas fa-check-circle me-1 text-primary"></i>Selected Quantity
+                    </div>
+                    <div class="qty-banner-text" id="display-selected-qty-text">
+                        1500 ml (1.5 L)
+                    </div>
+                    <!-- Detailed Liter + ML breakdown indicator chips -->
+                    <div class="d-flex justify-content-center align-items-center gap-2 mt-2">
+                        <span class="badge bg-primary bg-opacity-25 text-primary px-3 py-1 fs-6 rounded-pill border border-primary border-opacity-25" id="chip-liter-val">
+                            1 L
+                        </span>
+                        <span class="text-secondary fw-bold fs-5">+</span>
+                        <span class="badge bg-info bg-opacity-25 text-info px-3 py-1 fs-6 rounded-pill border border-info border-opacity-25" id="chip-ml-val">
+                            500 ml
+                        </span>
+                        <span class="text-secondary fw-bold fs-5">=</span>
+                        <span class="badge bg-success bg-opacity-25 text-success px-3 py-1 fs-6 rounded-pill border border-success border-opacity-25" id="chip-total-val">
+                            1500 ml
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 2. MILK QUANTITY SECTION: TWO UNIT BUTTONS [ LITER ] [ ML ] -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="fw-bold text-primary fs-6">
+                            <i class="fas fa-sliders-h me-1"></i>Milk Quantity Unit:
+                        </label>
+                        <span class="small text-secondary">Tap to switch unit buttons</span>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" 
+                                    class="btn btn-unit-toggle w-100 active d-flex align-items-center justify-content-center gap-2" 
+                                    id="unit-btn-liter" 
+                                    onclick="switchQuantityUnit('liter')">
+                                <i class="fas fa-prescription-bottle fs-5"></i>
+                                <span>LITER (L)</span>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" 
+                                    class="btn btn-unit-toggle w-100 d-flex align-items-center justify-content-center gap-2" 
+                                    id="unit-btn-ml" 
+                                    onclick="switchQuantityUnit('ml')">
+                                <i class="fas fa-flask fs-5"></i>
+                                <span>MILLILITER (ML)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. QUANTITY BUTTONS CONTAINER -->
+                <!-- A. LITER OPTIONS (1-liter steps) -->
+                <div id="unit-section-liter" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-secondary">
+                            <i class="fas fa-hand-pointer me-1 text-primary"></i>Choose Liter (1 L steps):
+                        </span>
+                        <span class="small text-muted" id="liter-status-text">Active: 1 L</span>
+                    </div>
+                    <div class="qty-buttons-grid" id="liter-buttons-grid">
+                        <button type="button" class="qty-step-btn" data-liter="0" onclick="selectLiterStep(0)">
+                            <span>0</span>
+                            <span class="qty-sublabel">0 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="1" onclick="selectLiterStep(1)">
+                            <span>1</span>
+                            <span class="qty-sublabel">1 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="2" onclick="selectLiterStep(2)">
+                            <span>2</span>
+                            <span class="qty-sublabel">2 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="3" onclick="selectLiterStep(3)">
+                            <span>3</span>
+                            <span class="qty-sublabel">3 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="4" onclick="selectLiterStep(4)">
+                            <span>4</span>
+                            <span class="qty-sublabel">4 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="5" onclick="selectLiterStep(5)">
+                            <span>5</span>
+                            <span class="qty-sublabel">5 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="6" onclick="selectLiterStep(6)">
+                            <span>6</span>
+                            <span class="qty-sublabel">6 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="7" onclick="selectLiterStep(7)">
+                            <span>7</span>
+                            <span class="qty-sublabel">7 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="8" onclick="selectLiterStep(8)">
+                            <span>8</span>
+                            <span class="qty-sublabel">8 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="9" onclick="selectLiterStep(9)">
+                            <span>9</span>
+                            <span class="qty-sublabel">9 L</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-liter="10" onclick="selectLiterStep(10)">
+                            <span>10</span>
+                            <span class="qty-sublabel">10 L</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- B. MILLILITER OPTIONS (100ml steps) -->
+                <div id="unit-section-ml" class="mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-secondary">
+                            <i class="fas fa-hand-pointer me-1 text-info"></i>Choose Milliliter (100 ml steps):
+                        </span>
+                        <span class="small text-muted" id="ml-status-text">Active: 500 ml</span>
+                    </div>
+                    <div class="qty-buttons-grid" id="ml-buttons-grid">
+                        <button type="button" class="qty-step-btn" data-ml="0" onclick="selectMlStep(0)">
+                            <span>0</span>
+                            <span class="qty-sublabel">0 ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="100" onclick="selectMlStep(100)">
+                            <span>100</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="200" onclick="selectMlStep(200)">
+                            <span>200</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="300" onclick="selectMlStep(300)">
+                            <span>300</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="400" onclick="selectMlStep(400)">
+                            <span>400</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="500" onclick="selectMlStep(500)">
+                            <span>500</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="600" onclick="selectMlStep(600)">
+                            <span>600</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="700" onclick="selectMlStep(700)">
+                            <span>700</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="800" onclick="selectMlStep(800)">
+                            <span>800</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="900" onclick="selectMlStep(900)">
+                            <span>900</span>
+                            <span class="qty-sublabel">ml</span>
+                        </button>
+                        <button type="button" class="qty-step-btn" data-ml="1000" onclick="selectMlStep(1000)">
+                            <span>1000</span>
+                            <span class="qty-sublabel">ml (1L)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. QUICK HELPERS: STEPPERS & PRESETS -->
+                <div class="mb-3 pt-2 border-top border-secondary border-opacity-10">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-semibold text-secondary">Quick Stepper & Presets:</span>
+                        <button type="button" class="btn btn-sm btn-link text-secondary text-decoration-none p-0" onclick="resetToCustomerDefault()">
+                            <i class="fas fa-undo me-1"></i>Reset to Default
+                        </button>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill fw-bold" onclick="adjustMlStep(-100)">
+                            <i class="fas fa-minus me-1"></i>100 ml
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill fw-bold" onclick="adjustMlStep(100)">
+                            <i class="fas fa-plus me-1"></i>100 ml
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill fw-bold" onclick="adjustMlStep(-1000)">
+                            <i class="fas fa-minus me-1"></i>1 L
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill fw-bold" onclick="adjustMlStep(1000)">
+                            <i class="fas fa-plus me-1"></i>1 L
+                        </button>
+                    </div>
+
+                    <!-- Common preset pills -->
+                    <div class="d-flex flex-wrap gap-1">
+                        <span class="quick-preset-chip" onclick="applyQuickPreset(500)">500 ml</span>
+                        <span class="quick-preset-chip" onclick="applyQuickPreset(1000)">1 L (1000 ml)</span>
+                        <span class="quick-preset-chip" onclick="applyQuickPreset(1500)">1.5 L (1500 ml)</span>
+                        <span class="quick-preset-chip" onclick="applyQuickPreset(2000)">2 L (2000 ml)</span>
+                        <span class="quick-preset-chip" onclick="applyQuickPreset(2500)">2.5 L (2500 ml)</span>
+                        <span class="quick-preset-chip" onclick="applyQuickPreset(3000)">3 L (3000 ml)</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer: Big OK / Save Button -->
+            <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                <div class="d-grid gap-2 w-100">
+                    <button type="button" 
+                            class="btn btn-success btn-lg py-3 fw-bold shadow-lg d-flex align-items-center justify-content-center gap-2 fs-5" 
+                            id="btn-confirm-save-qty" 
+                            onclick="confirmSaveDelivery('Delivered', 'update')">
+                        <i class="fas fa-check-circle"></i>
+                        <span>OK / Save (<span id="btn-save-qty-display">1500 ml</span>)</span>
+                    </button>
+                    <!-- Additional delivery button for multiple deliveries on the same calendar day -->
+                    <button type="button" 
+                            class="btn btn-outline-primary py-2 fw-bold" 
+                            id="btn-add-additional-delivery"
+                            onclick="confirmSaveDelivery('Delivered', 'add')">
+                        <i class="fas fa-plus-circle me-1"></i>Add as Additional Delivery for this Date (e.g. Evening Delivery)
+                    </button>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-danger w-100 py-2 fw-semibold" onclick="confirmSaveDelivery('Skipped', 'update')">
+                                <i class="fas fa-ban me-1"></i>Skip Date
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-secondary w-100 py-2 fw-semibold" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State management for Milk Quantity Selection System
+    let currentCustomerId = null;
+    let selectedLiter = 1;      // in 1-liter steps (e.g. 0, 1, 2, 3...)
+    let selectedMl = 500;       // in 100ml steps (e.g. 0, 100, 200, ..., 900, 1000)
+    let currentActiveUnit = 'liter'; // 'liter' or 'ml'
+    let modalInstance = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalEl = document.getElementById('milkQuantityModal');
+        if (modalEl) {
+            modalInstance = new bootstrap.Modal(modalEl);
+        }
+    });
+
+    /**
+     * Open the Mobile Milk Quantity Selection Modal for a specific customer.
+     * Pre-populates with today's saved quantity (if delivered) or the customer's default quantity.
+     */
+    function openMilkQuantityModal(custId) {
+        currentCustomerId = custId;
+        const card = document.getElementById(`cust-card-${custId}`);
+        if (!card) return;
+
+        const custName = card.getAttribute('data-customer-name');
+        const custAddress = card.getAttribute('data-customer-address');
+        const socName = card.getAttribute('data-society-name');
+        const defaultQtyMl = parseInt(card.getAttribute('data-default-qty-ml') || '1000');
+        const currentQtyMl = parseInt(card.getAttribute('data-current-qty-ml') || defaultQtyMl);
+        const delivered = card.getAttribute('data-delivered') === 'true';
+        const status = card.getAttribute('data-status');
+
+        // Set customer header info
+        const infoEl = document.getElementById('modal-customer-info');
+        if (infoEl) {
+            infoEl.innerHTML = `<strong>${custName}</strong> • ${custAddress} (${socName})`;
+        }
+
+        // Set date to current header delivery date
+        const headerDate = document.getElementById('headerDeliveryDatePicker')?.value || '{{ selected_date.strftime("%Y-%m-%d") }}';
+        const modalDateInput = document.getElementById('modalDeliveryDate');
+        if (modalDateInput) {
+            modalDateInput.value = headerDate;
+        }
+
+        // Existing deliveries notice
+        const noticeEl = document.getElementById('modalExistingDeliveriesNotice');
+        if (noticeEl) {
+            if (delivered && status === 'Delivered' && currentQtyMl > 0) {
+                noticeEl.innerHTML = `<i class="fas fa-info-circle text-primary me-1"></i>Already delivered on this date: <strong>${currentQtyMl} ml (${(currentQtyMl/1000).toFixed(1)} L)</strong>. You can update it or click "Add as Additional Delivery" below for an extra delivery.`;
+                noticeEl.classList.remove('d-none');
+            } else {
+                noticeEl.classList.add('d-none');
+            }
+        }
+
+        // Determine starting quantity in milliliters:
+        let initialMl = defaultQtyMl;
+        if (delivered && status === 'Delivered' && currentQtyMl > 0) {
+            initialMl = currentQtyMl;
+        }
+
+        setQuantityFromMl(initialMl);
+
+        // Default to showing the Liter unit tab initially
+        switchQuantityUnit('liter');
+
+        // Show Bootstrap modal
+        if (modalInstance) {
+            modalInstance.show();
+        }
+    }
+
+    /**
+     * Switch the active unit tab between [ LITER ] and [ ML ].
+     * Shows corresponding step buttons.
+     */
+    function switchQuantityUnit(unit) {
+        currentActiveUnit = unit;
+        const btnLiter = document.getElementById('unit-btn-liter');
+        const btnMl = document.getElementById('unit-btn-ml');
+        const secLiter = document.getElementById('unit-section-liter');
+        const secMl = document.getElementById('unit-section-ml');
+
+        if (unit === 'liter') {
+            btnLiter.classList.add('active');
+            btnMl.classList.remove('active');
+            secLiter.style.display = 'block';
+            secMl.style.display = 'none';
+        } else {
+            btnMl.classList.add('active');
+            btnLiter.classList.remove('active');
+            secMl.style.display = 'block';
+            secLiter.style.display = 'none';
+        }
+    }
+
+    /**
+     * When milkman selects Liter (1-liter steps: 0, 1, 2, 3, 4, 5, etc.)
+     */
+    function selectLiterStep(val) {
+        selectedLiter = parseInt(val);
+        updateQuantityUI();
+    }
+
+    /**
+     * When milkman selects ML (100ml steps: 0, 100, 200, ..., 1000 ml)
+     */
+    function selectMlStep(val) {
+        selectedMl = parseInt(val);
+        updateQuantityUI();
+    }
+
+    /**
+     * Adjust ML by delta (+/- 100 ml, +/- 1000 ml).
+     */
+    function adjustMlStep(delta) {
+        let total = getTotalMl() + delta;
+        if (total < 0) total = 0;
+        if (total > 20000) total = 20000;
+        setQuantityFromMl(total);
+    }
+
+    /**
+     * Apply a single-tap quick preset (e.g. 500, 1000, 1500, 2000, 2500, 3000 ml).
+     */
+    function applyQuickPreset(presetMl) {
+        setQuantityFromMl(presetMl);
+    }
+
+    /**
+     * Reset to customer's default quantity.
+     */
+    function resetToCustomerDefault() {
+        if (!currentCustomerId) return;
+        const card = document.getElementById(`cust-card-${currentCustomerId}`);
+        if (card) {
+            const defaultMl = parseInt(card.getAttribute('data-default-qty-ml') || '1000');
+            setQuantityFromMl(defaultMl);
+        }
+    }
+
+    /**
+     * Decompose total milliliters into selectedLiter and selectedMl, then refresh UI.
+     */
+    function setQuantityFromMl(totalMl) {
+        totalMl = Math.max(0, parseInt(totalMl) || 0);
+        selectedLiter = Math.floor(totalMl / 1000);
+        selectedMl = totalMl % 1000;
+
+        // If total is 0, both are 0
+        if (totalMl === 0) {
+            selectedLiter = 0;
+            selectedMl = 0;
+        }
+
+        updateQuantityUI();
+    }
+
+    /**
+     * Compute total milliliters from currently selected Liter and ML.
+     */
+    function getTotalMl() {
+        return (selectedLiter * 1000) + selectedMl;
+    }
+
+    /**
+     * Refresh all display elements, chips, button highlights, and save button label.
+     */
+    function updateQuantityUI() {
+        const totalMl = getTotalMl();
+        const totalLiters = (totalMl / 1000.0);
+        const formattedLiters = totalLiters % 1 === 0 ? totalLiters.toFixed(0) : totalLiters.toFixed(2).replace(/\.?0+$/, '');
+
+        // 1. Update Live Display Banner text
+        // As required: "Selected Quantity: 1500 ml (1.5 L)"
+        const bannerTextEl = document.getElementById('display-selected-qty-text');
+        if (bannerTextEl) {
+            bannerTextEl.innerText = `Selected Quantity: ${totalMl} ml (${formattedLiters} L)`;
+        }
+
+        // 2. Update Breakdown Chips
+        const chipLiter = document.getElementById('chip-liter-val');
+        const chipMl = document.getElementById('chip-ml-val');
+        const chipTotal = document.getElementById('chip-total-val');
+
+        if (chipLiter) chipLiter.innerText = `${selectedLiter} L`;
+        if (chipMl) chipMl.innerText = `${selectedMl} ml`;
+        if (chipTotal) chipTotal.innerText = `${totalMl} ml`;
+
+        // 3. Update Status text headers
+        const literStatus = document.getElementById('liter-status-text');
+        const mlStatus = document.getElementById('ml-status-text');
+        if (literStatus) literStatus.innerText = `Selected: ${selectedLiter} L`;
+        if (mlStatus) mlStatus.innerText = `Selected: ${selectedMl} ml`;
+
+        // 4. Update Highlight on Liter buttons
+        const literGrid = document.getElementById('liter-buttons-grid');
+        if (literGrid) {
+            literGrid.querySelectorAll('.qty-step-btn').forEach(btn => {
+                const bVal = parseInt(btn.getAttribute('data-liter'));
+                if (bVal === selectedLiter) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // 5. Update Highlight on ML buttons
+        const mlGrid = document.getElementById('ml-buttons-grid');
+        if (mlGrid) {
+            mlGrid.querySelectorAll('.qty-step-btn').forEach(btn => {
+                const bVal = parseInt(btn.getAttribute('data-ml'));
+                if (bVal === selectedMl) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // 6. Update Preset chips highlight
+        document.querySelectorAll('.quick-preset-chip').forEach(chip => {
+            const txt = chip.innerText;
+            if (txt.includes(`${totalMl} ml`)) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+
+        // 7. Update OK / Save button text
+        const saveBtnQtyLabel = document.getElementById('btn-save-qty-display');
+        if (saveBtnQtyLabel) {
+            saveBtnQtyLabel.innerText = `${totalMl} ml (${formattedLiters} L)`;
+        }
+    }
+
+    function changeDeliveryDate(dateVal) {
+        if (!dateVal) return;
+        window.location.href = `/milkman/delivery?date=${dateVal}`;
+    }
+
+    /**
+     * Submit delivery from the Milk Quantity Modal.
+     * When clicking OK / Save:
+     * - Saves selected quantity in customer daily delivery record
+     * - Saves date, customer ID, milkman ID, total quantity
+     * - Shows success message
+     */
+    function confirmSaveDelivery(status = 'Delivered', mode = 'update') {
+        if (!currentCustomerId) return;
+        const totalMl = getTotalMl();
+
+        if (status === 'Delivered' && totalMl <= 0) {
+            showToast('Please select a milk quantity greater than 0 ml!', 'warning');
+            return;
+        }
+
+        const deliveryDate = document.getElementById('modalDeliveryDate')?.value || '{{ selected_date.strftime("%Y-%m-%d") }}';
+
+        const saveBtn = document.getElementById('btn-confirm-save-qty');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Saving...`;
+        }
+
+        const payload = `customer_id=${currentCustomerId}&quantity_ml=${status === 'Delivered' ? totalMl : 0}&status=${status}&delivery_date=${deliveryDate}&mode=${mode}`;
+
+        fetch('/milkman/delivery', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: payload
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `<i class="fas fa-check-circle"></i> <span>OK / Save (<span id="btn-save-qty-display">${totalMl} ml</span>)</span>`;
+            }
+
+            if (data.success) {
+                showToast(data.message, 'success');
+
+                // Close modal
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+
+                // Update Customer Card UI dynamically
+                updateCustomerCardState(currentCustomerId, data);
+            } else {
+                showToast(data.message || 'Failed to save delivery.', 'danger');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `<i class="fas fa-check-circle"></i> <span>OK / Save (<span id="btn-save-qty-display">${totalMl} ml</span>)</span>`;
+            }
+            showToast('Failed to save delivery. Please try again.', 'danger');
+        });
+    }
+
+    /**
+     * Quick skip directly from customer card.
+     */
+    function quickSkipCustomer(custId) {
+        if (!confirm('Mark today delivery as Skipped for this customer?')) return;
+
+        fetch('/milkman/delivery', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `customer_id=${custId}&quantity_ml=0&status=Skipped`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'warning');
+                updateCustomerCardState(custId, data);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Failed to mark delivery as skipped.', 'danger');
+        });
+    }
+
+    /**
+     * Dynamically update a customer card on the page after saving.
+     */
+    function updateCustomerCardState(custId, data) {
+        const card = document.getElementById(`cust-card-${custId}`);
+        if (!card) return;
+
+        card.setAttribute('data-delivered', 'true');
+        card.setAttribute('data-status', data.status);
+        card.setAttribute('data-current-qty-ml', data.quantity_ml);
+
+        const badgeEl = document.getElementById(`status-badge-${custId}`);
+        const btnLabel = document.getElementById(`btn-label-${custId}`);
+
+        if (data.status === 'Delivered') {
+            card.className = 'customer-delivery-card h-100 d-flex flex-column justify-content-between status-delivered';
+            if (badgeEl) {
+                badgeEl.innerHTML = `<span class="badge-custom badge-delivered"><i class="fas fa-check-circle me-1"></i>${data.quantity_ml} ml (${data.quantity} L)</span>`;
+            }
+            if (btnLabel) {
+                btnLabel.innerText = `Change Qty (${data.quantity_ml} ml)`;
+            }
+        } else {
+            card.className = 'customer-delivery-card h-100 d-flex flex-column justify-content-between status-skipped';
+            if (badgeEl) {
+                badgeEl.innerHTML = `<span class="badge-custom badge-skipped"><i class="fas fa-ban me-1"></i>Skipped</span>`;
+            }
+            if (btnLabel) {
+                btnLabel.innerText = 'Select Milk Qty';
+            }
+        }
+    }
+</script>
+{% endblock %}
